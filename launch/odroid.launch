@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="assignment1" name="location_node" type="location.py" output="screen" />
+</launch>

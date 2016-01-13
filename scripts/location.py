@@ -17,7 +17,7 @@ class location(object):
 
     def publish(self):
         rate = rospy.Rate(1)
-        while True:
+        while not rospy.is_shutdown():
             self.location_publisher.publish(self.twistMessage)
             rate.sleep()
 
