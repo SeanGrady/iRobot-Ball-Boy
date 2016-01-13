@@ -9,19 +9,19 @@ class location(object):
 		self.twistMessage = Twist()
 		self.location_publisher = rospy.Publisher("location", Twist, queue_size = 10)
 		rospy.init_node("location_node")
-		self.location_service = rospy.Service('locationService', location_srv, self.handle_location)
-
-
+		self.location_service = rospy.Service('location_srv', location_srv, self.handle_location)
 
 	def handle_location(self, incomingT):
+                print incomingT
 		#rospy.wait_for_service("update_location")
-		self.twistMessage.linear.x += incomingT.linear.x
-		self.twistMessage.linear.y += incomingT.linear.y
-		self.twistMessage.linear.z += incomingT.linear.z
+		self.twistMessage.linear.x += incomingT.lin_x
+		self.twistMessage.linear.y += incomingT.lin_y
+		self.twistMessage.linear.z += incomingT.lin_z
 
-		self.twistMessage.angular.x += incomingT.angular.x
-		self.twistMessage.angular.y += incomingT.angular.y
-		self.twistMessage.angular.z += incomingT.angular.z
+		self.twistMessage.angular.x += incomingT.ang_x
+		self.twistMessage.angular.y += incomingT.ang_y
+		self.twistMessage.angular.z += incomingT.ang_z
+                return "success"
 
 	def publish(self):
 		rate = rospy.Rate(1)

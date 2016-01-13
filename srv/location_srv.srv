@@ -1,3 +1,8 @@
-geometry_msgs/Twist locationReq
+float64 lin_x
+float64 lin_y
+float64 lin_z
+float64 ang_x
+float64 ang_y
+float64 ang_z
 ---
 string response
