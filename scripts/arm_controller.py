@@ -8,10 +8,10 @@ from assignment1.srv import armPose
 
 class ArmController():
     def __init__(self):
-        self.connection = 5
+        self.connection = None
         print self.connection
         #self.arm_struct = struct.Struct('')
-        self.port = '/dev/ttyUSB0'
+        self.port = '/dev/ttyACM0'
         self.ang_len = 2
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
@@ -55,8 +55,11 @@ class ArmController():
         return "Pose assumed"
 
     def assume_pose(self):
+        """
         for motor, angle in self.requested_pose:
             self.connection.write(self.motor_req[motor] + angle + '\n')
+        """
+        self.connection.write('m11010\n')
 
     def default_pose(self):
         pass
@@ -68,8 +71,12 @@ class ArmController():
         pass
 
     def update_joint_states(self):
-        self.connection.write(self.sensor_req + '\n')
+        self.connection.flush()
+        self.connection.write('s\n')
         angle_string = self.connection.readline()
+        print angle_string
+        test = [ord(char) for char in angle_string]
+        print test
         angles = angle_string.strip().split()
         angles = [int(angle) for angle in angles]
         for motor, angle in zip(self.arm_state.keys(), angles):
