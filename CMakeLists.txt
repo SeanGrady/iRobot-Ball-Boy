@@ -54,6 +54,7 @@ find_package(catkin REQUIRED COMPONENTS
  add_service_files(
    FILES
    location_srv.srv
+   armPose.srv
  )
 
 ## Generate actions in the 'action' folder
