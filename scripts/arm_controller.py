@@ -16,7 +16,6 @@ class ArmController():
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
                                           self.handle_pose_req)
-        self.connect_robot()
         self.arm_state = {
                 "M1":0,
                 "M2":0,
@@ -40,7 +39,8 @@ class ArmController():
                 "M4":(0,0),
                 "M5":(0,0)
         }
-        self.update_joint_states()
+        #self.update_joint_states()
+        self.connect_robot()
         rospy.spin()
 
     def handle_pose_req(self, pose_req):
@@ -59,7 +59,7 @@ class ArmController():
         for motor, angle in self.requested_pose:
             self.connection.write(self.motor_req[motor] + angle + '\n')
         """
-        self.connection.write('m11010\n')
+        self.connection.write('m10010')
 
     def default_pose(self):
         pass
@@ -72,13 +72,13 @@ class ArmController():
 
     def update_joint_states(self):
         self.connection.flush()
-        self.connection.write('s\n')
+        self.connection.write('s')
         angle_string = self.connection.readline()
         print angle_string
-        test = [ord(char) for char in angle_string]
-        print test
         angles = angle_string.strip().split()
         angles = [int(angle) for angle in angles]
+        print angles
+        print self.arm_state.keys()
         for motor, angle in zip(self.arm_state.keys(), angles):
             self.arm_state[motor] = angle
 
@@ -97,7 +97,7 @@ class ArmController():
         else:
             self.update_joint_states()
             print "Joint States are: ",self.arm_state
-            self.default_pose()
+            self.assume_pose()
 
 if __name__=="__main__":
     arm_controller = ArmController()
