@@ -40,7 +40,7 @@ class ArmController():
                 "M4":(0,0),
                 "M5":(0,0)
         }
-        self.update_joint_states()
+        #self.update_joint_states()
         rospy.spin()
 
     def handle_pose_req(self, pose_req):
@@ -97,7 +97,7 @@ class ArmController():
         else:
             self.update_joint_states()
             print "Joint States are: ",self.arm_state
-            self.default_pose()
+            self.assume_pose()
 
 if __name__=="__main__":
     arm_controller = ArmController()
