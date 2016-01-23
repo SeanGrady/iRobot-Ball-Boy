@@ -12,7 +12,7 @@ Motor::Motor() {
 	myMotor3 = AFMS.getMotor(3);
 	myMotor4 = AFMS.getMotor(4);
 }
-
+// TODO : Add support for speed as well
 void Motor::moveMotor1(int dir,int angle) {
 	int initialSensorVal = sensor.getSensor1Value();
 	// Current calibration -> 1 degree => 5 points in sensor
