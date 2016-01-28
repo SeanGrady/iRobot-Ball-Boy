@@ -59,7 +59,7 @@ class ArmController():
         for motor, angle in self.requested_pose:
             self.connection.write(self.motor_req[motor] + angle + '\n')
         """
-        self.connection.write('m10010')
+        self.connection.write('m11100')
 
     def default_pose(self):
         pass

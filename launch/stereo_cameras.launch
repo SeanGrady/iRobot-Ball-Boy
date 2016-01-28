@@ -1,0 +1,32 @@
+<launch>
+    <env name = "GSCAM_CONFIG" value = "v4l2src device=/dev/video0 !
+        video/x-raw-rgb,framerate-25/1 ! ffmpegcolorspace" />
+
+    <node pkg="gscam" name="web_cam_1" type="gscam">
+        <param name = "camera_name" value = "camera_1" />
+        <remap from = "camera/image_raw" to = "my_stereo/left/image_raw" />
+        <remap from = "/set_camera_info" to = "my_stereo/left/set_camera_info" />
+    </node>
+
+    <env name = "GSCAM_CONFIG" value = "v4l2src device=/dev/video1 !
+        video/x-raw-rgb,framerate-25/1 ! ffmpegcolorspace" />
+
+    <node pkg="gscam" name="web_cam_2" type="gscam">
+        <param name = "camera_name" value = "camera_2" />
+        <remap from = "camera/image_raw" to = "my_stereo/right/image_raw" />
+        <remap from = "/set_camera_info" to = "my_stereo/right/set_camera_info" />
+    </node>
+
+    <!--
+    <node pkg="camera_calibration" name="cameracalibrator" type="cameracalibrator">
+        <param name = "size" value = "8x6" />
+        <param name = "square" value = "0.025" />
+        <param name = "approximate" value = "0.1" />
+        <remap from = "right" to = "/my_stereo/right/image_raw" />
+        <remap from = "left" to = "/my_stereo/left/image_raw" />
+        <remap from = "left_camera" to = "/my_stereo/left" />
+        <remap from = "right_camera" to = "/my_stereo/right" />
+    </node>
+    -->
+
+</launch>
