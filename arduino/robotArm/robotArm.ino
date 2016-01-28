@@ -1,3 +1,4 @@
+
 #include <Wire.h>
 #include <Adafruit_MotorShield.h>
 #include "utility/Adafruit_MS_PWMServoDriver.h"
@@ -9,6 +10,7 @@ Motor m;
 
 void setup() {
   Serial.begin(9600);
+  m.AFMS.begin();
 }
 
 void loop() {
@@ -52,6 +54,9 @@ void loop() {
             break;
             }
 
+      }
+      else if(code == 'd'){
+        m.stopMotors();
       }
     }
   }

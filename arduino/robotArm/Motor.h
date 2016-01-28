@@ -10,7 +10,6 @@
 class Motor {
 
 	private:
-		Adafruit_MotorShield AFMS;
 		Adafruit_DCMotor *myMotor1;
 		Adafruit_DCMotor *myMotor2;
 		Adafruit_DCMotor *myMotor3;
@@ -19,10 +18,12 @@ class Motor {
 
 	public:
 		Motor();
+    Adafruit_MotorShield AFMS;
 		void moveMotor1(int dir,int angle);
 		void moveMotor2(int dir,int angle);
 		void moveMotor3(int dir,int angle);
 		void moveMotor4(int dir,int angle);
+    void stopMotors();
 	
 };
 

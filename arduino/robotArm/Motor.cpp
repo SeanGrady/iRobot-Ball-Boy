@@ -6,13 +6,17 @@
 #include "Sensor.h"
 
 Motor::Motor() {
-	AFMS = Adafruit_MotorShield();
+  AFMS = Adafruit_MotorShield();
 	myMotor1 = AFMS.getMotor(1);
 	myMotor2 = AFMS.getMotor(2);
 	myMotor3 = AFMS.getMotor(3);
 	myMotor4 = AFMS.getMotor(4);
 }
 // TODO : Add support for speed as well
+/*
+ * UP: 1  Max: 230
+ * Down: 0  Min: 35
+ */
 void Motor::moveMotor1(int dir,int angle) {
 	int initialSensorVal = sensor.getSensor1Value();
 	// Current calibration -> 1 degree => 5 points in sensor
@@ -27,10 +31,20 @@ void Motor::moveMotor1(int dir,int angle) {
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
 		currentSensorVal = sensor.getSensor1Value();
+    if(dir == 1 && currentSensorVal > 230){
+      break;
+    }
+    else if(dir == 0 && currentSensorVal < 35){
+      break;
+    }
 	}
 	myMotor1->setSpeed(0);
 }
 
+/*
+ * For this sensor direction 0 moves the arm downward. 1 upward
+ * Maximum point upward is 775, downward is 336, 90 degrees 439
+ */
 void Motor::moveMotor2(int dir,int angle) {
 	int initialSensorVal = sensor.getSensor2Value();
 	// Current calibration -> 1 degree => 5 points in sensor
@@ -43,8 +57,14 @@ void Motor::moveMotor2(int dir,int angle) {
 
 	myMotor2->setSpeed(75);
 	int currentSensorVal = sensor.getSensor2Value();
-	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
+	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {      
 		currentSensorVal = sensor.getSensor2Value();
+    if(dir == 1 && currentSensorVal > 775){
+      break;
+    }
+    else if(dir == 0 && currentSensorVal < 335){
+      break;
+    }
 	}
 	myMotor2->setSpeed(0);
 }
@@ -84,4 +104,13 @@ void Motor::moveMotor4(int dir,int angle) {
 	}
 	myMotor4->setSpeed(0);
 }
+
+void Motor::stopMotors(){
+  myMotor1->setSpeed(0);
+  myMotor2->setSpeed(0);
+  myMotor3->setSpeed(0);
+  myMotor4->setSpeed(0);
+
+}
+
 
