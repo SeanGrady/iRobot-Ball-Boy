@@ -9,6 +9,7 @@ from code import interact
 from sensor_msgs.msg import Image
 from stereo_msgs.msg import DisparityImage
 from sensor_msgs.msg import CameraInfo
+from geometry_msgs.msg import PointStamped
 
 ball_hsv_color = (6, 138, 190)
 ball_threshold = (5, 10, 10)
@@ -20,9 +21,19 @@ closeKernSizeForFar = 30
 class ObjectRecognizer():
     def __init__(self):
         self.bridge = CvBridge()
+        self.pointMessage = PointStamped()
         self.latest_disp = None
         self.image_pub = rospy.Publisher("/Object_Recognizer_Node/Boxed",
                                          Image,
+                                         queue_size = 10)
+        self.rviz_ball_pub = rospy.Publisher("/rviz_points/ball",
+                                         PointStamped,
+                                         queue_size = 10)
+        self.rviz_cam1_pub = rospy.Publisher("/rviz_points/camera_2",
+                                         PointStamped,
+                                         queue_size = 10)
+        self.rviz_cam2_pub = rospy.Publisher("/rviz_points/camera_1",
+                                         PointStamped,
                                          queue_size = 10)
         rospy.init_node("object_recognizer")
         self.rectified_sub= rospy.Subscriber(
@@ -50,6 +61,18 @@ class ObjectRecognizer():
             print "Disp at ball: ", disp
             depth = self._find_depth(disp, bx, by)
             print "depth at ball: ", depth
+        self.pointMessage.header.stamp = rospy.Time.now()
+        self.pointMessage.header.frame_id = "map"
+        self.pointMessage.point.x = 0
+        self.pointMessage.point.y = 0
+        self.pointMessage.point.z = 0
+        self.rviz_cam1_pub.publish(self.pointMessage)
+        self.pointMessage.header.stamp = rospy.Time.now()
+        self.pointMessage.header.frame_id = "map"
+        self.pointMessage.point.x = 1
+        self.pointMessage.point.y = 0
+        self.pointMessage.point.z = 0
+        self.rviz_cam2_pub.publish(self.pointMessage)
         rgb_image = cv2.cvtColor(drawn_image, cv2.COLOR_HSV2BGR)
         ros_image = self.bridge.cv2_to_imgmsg(rgb_image, "bgr8")
         self.image_pub.publish(ros_image)
