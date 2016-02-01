@@ -41,10 +41,25 @@ class ObjectRecognizer():
             Image,
             self._handle_incoming_rect
         )
+        self.left_rectified_sub= rospy.Subscriber(
+            "/my_stereo/left/image_rect",
+            Image,
+            self._handle_incoming_left
+        )
+        self.right_rectified_sub= rospy.Subscriber(
+            "/my_stereo/right/image_rect",
+            Image,
+            self._handle_incoming_right
+        )
         self.disp_sub = rospy.Subscriber(
                 "/my_stereo/disparity",
                 DisparityImage,
                 self._handle_incoming_disp
+        )
+        self.disp_pub = rospy.Publisher(
+                "/cv2_disparity",
+                Image,
+                queue_size = 10
         )
         rospy.spin()
 
@@ -53,14 +68,26 @@ class ObjectRecognizer():
         self.latest_disp = image
         self.latest_disp_params = disp_im
 
+    def _handle_incoming_left(self, left_rect_im):
+        image = self.bridge.imgmsg_to_cv2(left_rect_im, desired_encoding="passthrough")
+        self.latest_left_rect = image
+
+    def _handle_incoming_right(self, right_rect_im):
+        image = self.bridge.imgmsg_to_cv2(right_rect_im, desired_encoding="passthrough")
+        self.latest_right_rect = image
+
     def _handle_incoming_rect(self, rect_im):
         hsv_image = self._convert_raw_2_hsv(rect_im)
+        rect_right = self.latest_right_rect
+        rect_left = self.latest_left_rect
+        disparity = cv2.StereoBM.compute(rect_left, rect_right)
         drawn_image, bx, by = self._find_ball(hsv_image)
         if bx < self.latest_disp.shape[0] and by < self.latest_disp.shape[1]:
             disp = self.latest_disp[bx, by]
             print "Disp at ball: ", disp
             depth = self._find_depth(disp, bx, by)
             print "depth at ball: ", depth
+
         self.pointMessage.header.stamp = rospy.Time.now()
         self.pointMessage.header.frame_id = "map"
         self.pointMessage.point.x = 0
@@ -75,7 +102,11 @@ class ObjectRecognizer():
         self.rviz_cam2_pub.publish(self.pointMessage)
         rgb_image = cv2.cvtColor(drawn_image, cv2.COLOR_HSV2BGR)
         ros_image = self.bridge.cv2_to_imgmsg(rgb_image, "bgr8")
+
+        ros_disp = self.bridge.cv2_to_imgmsg(rgb_disp, "bgr8")
+
         self.image_pub.publish(ros_image)
+        self.disp_pub.publish
 
     def _find_depth(self, disp, x, y):
         B = self.latest_disp_params.T
