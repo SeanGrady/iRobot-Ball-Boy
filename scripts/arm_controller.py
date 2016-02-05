@@ -57,13 +57,17 @@ class ArmController():
     def arm_max(self,command):
 	
 	if(command == 'bot'):
+		self.connection.write('m30100')
 		self.connection.write('m20100')
 		self.connection.write('m10100')
-		self.connection.write('m30100')
 	elif(command == 'top'):
-		self.connection.write('m31100')
 		self.connection.write('m21100')
 		self.connection.write('m11100')
+	elif(command == 'drop'):
+		self.connection.write('m30100')
+	elif(command == 'grab'):
+		self.connection.write('m31100')
+			
 	self.connection.write(command)
 
     def assume_pose(self):
