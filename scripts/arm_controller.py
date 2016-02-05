@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-
+import time
 import serial
 import math
 import rospy
 import struct
-from assignment1.srv import armPose
+from cse291_team_2.srv import armPose
 
 class ArmController():
     def __init__(self):
@@ -54,12 +54,32 @@ class ArmController():
         self.assume_pose()
         return "Pose assumed"
 
+    def arm_max(self,command):
+	
+	if(command == 'bot'):
+		self.connection.write('m20100')
+		self.connection.write('m10100')
+		self.connection.write('m30100')
+	elif(command == 'top'):
+		self.connection.write('m31100')
+		self.connection.write('m21100')
+		self.connection.write('m11100')
+	self.connection.write(command)
+
     def assume_pose(self):
         """
         for motor, angle in self.requested_pose:
             self.connection.write(self.motor_req[motor] + angle + '\n')
         """
-        self.connection.write('m11100')
+	while(True):
+		command = raw_input ("Enter Motor Command: ")
+        	if(command == 's'):
+			self.connection.write('s')
+			print self.connection.readline()
+			self.connection.flush()
+		else:
+			self.arm_max(command)
+		#self.connection.write(command)
 
     def default_pose(self):
         pass
@@ -71,8 +91,10 @@ class ArmController():
         pass
 
     def update_joint_states(self):
-        self.connection.flush()
-        self.connection.write('s')
+
+	time.sleep(2)	
+	self.connection.write('s')
+        print self.connection.readline()
         angle_string = self.connection.readline()
         print angle_string
         angles = angle_string.strip().split()
@@ -88,7 +110,8 @@ class ArmController():
             return
         try:
             self.connection = serial.Serial(
-                    self.port,
+                    self.port, 
+		    baudrate=9600,
                     timeout=1
             )
             print "Connected to arm."
