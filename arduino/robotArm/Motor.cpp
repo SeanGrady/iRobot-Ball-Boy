@@ -31,10 +31,10 @@ void Motor::moveMotor1(int dir,int angle) {
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
 		currentSensorVal = sensor.getSensor1Value();
-    if(dir == 1 && currentSensorVal > 900){
+    if(dir == 1 && currentSensorVal > 630){
       break;
     }
-    else if(dir == 0 && currentSensorVal < 660){
+    else if(dir == 0 && currentSensorVal < 375){
       break;
     }
 	}
@@ -63,7 +63,7 @@ void Motor::moveMotor2(int dir,int angle) {
       break;
     }
     else if(dir == 0){
-      if(currentSensorVal < 630){
+      if(currentSensorVal < 620){
         break;
       }
     }
@@ -92,7 +92,7 @@ void Motor::moveMotor3(int dir,int angle) {
     if(temp == 10000){
       break;
     }
-    else if(dir == 1 && currentSensorVal > 775){
+    else if(dir == 1 && currentSensorVal > 800){
       break;
     }
     else if(dir == 0 && currentSensorVal < 600){
