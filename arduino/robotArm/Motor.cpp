@@ -27,7 +27,7 @@ void Motor::moveMotor1(int dir,int angle) {
 	else if(dir ==1)
 		myMotor1->run(FORWARD);
 
-	myMotor1->setSpeed(230);
+	myMotor1->setSpeed(255);
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
 		currentSensorVal = sensor.getSensor1Value();
@@ -55,7 +55,7 @@ void Motor::moveMotor2(int dir,int angle) {
 	else if(dir ==1)
 		myMotor2->run(FORWARD);
 
-	myMotor2->setSpeed(230);
+	myMotor2->setSpeed(255);
 	int currentSensorVal = sensor.getSensor2Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {      
 		currentSensorVal = sensor.getSensor2Value();
@@ -89,7 +89,7 @@ void Motor::moveMotor3(int dir,int angle) {
 		currentSensorVal = sensor.getSensor3Value();
 
     
-    if(temp == 10000){
+    if(dir == 0 && temp == 10000){
       break;
     }
     else if(dir == 1 && currentSensorVal > 800){
@@ -104,17 +104,17 @@ void Motor::moveMotor3(int dir,int angle) {
 }
 
 void Motor::moveMotor4(int dir,int angle) {
-	int initialSensorVal = sensor.getSensor4Value();
+	//int initialSensorVal = sensor.getSensor4Value();
 	// Current calibration -> 1 degree => 5 points in sensor
-	int changeRequired = 5 * angle;
+ 
 
 	if(dir == 0)
 		myMotor4->run(BACKWARD);
 	else if(dir ==1)
 		myMotor4->run(FORWARD);
 
-	myMotor4->setSpeed(50);
-	delay(angle);
+	myMotor4->setSpeed(255);
+	delay(1000);
 	myMotor4->setSpeed(0);
 }
 
