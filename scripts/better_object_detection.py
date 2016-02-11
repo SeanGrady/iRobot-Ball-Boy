@@ -4,6 +4,7 @@ import cv2
 
 class BallDetector():
     def __init__(self):
+        #define many things. Not sure if this would be better somewhere else
         self.hsv_lower = (83, 83, 40)
         self.hsv_upper = (98, 216, 143)
         self.blur_size = 11
@@ -34,7 +35,8 @@ class BallDetector():
         return masked_image
 
     def find_circles(self, image):
-        #Assumes unmasked BGR image
+        #Assumes unmasked BGR image, accumulator and min_dist will
+        #likely require much tuning
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         circles = cv2.HoughCircles(
                 gray_image,
@@ -45,6 +47,7 @@ class BallDetector():
         return circles
 
     def draw_circles(self, image, circles):
+        #draw all the detected circles, and a box at their centers
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for x, y, r in circles:
@@ -59,16 +62,20 @@ class BallDetector():
         return image
 
     def threshold_color(self, image):
+        #threshold image on color and return result to display
         mask = self.create_hsv_mask(image)
         masked_image = self.mask_image(image, mask)
         return masked_image
 
     def hough_circles(self, image):
+        #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
         circled_image = self.draw_circles(image, circles)
         return circled_image
 
     def test_cv_func(self, function):
+        #apply a function that returns a displayable image to a video stream
+        #then displays the results until 'q' is pressed
         while(1):
             ret, image = self.camera.read()
             if ret:
