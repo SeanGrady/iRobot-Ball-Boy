@@ -20,7 +20,11 @@ class BallDetector():
         #blur frame and convert to HSV colorspace
         #may end up resizing frame if need more FPS on odroid
         #frame = imutils.resize(rgb_image, width=600)
-        blurred = cv2.GaussianBlur(rgb_image, (self.blur_size, self.blur_size), 0)
+        blurred = cv2.GaussianBlur(
+                rgb_image,
+                (self.blur_size, self.blur_size),
+                0
+        )
         hsv = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2HSV)
 
         #use processed image to create a mask and return it
@@ -35,8 +39,8 @@ class BallDetector():
         return masked_image
 
     def find_circles(self, image):
-        #Assumes unmasked BGR image, accumulator and min_dist will
-        #likely require much tuning
+        #Assumes unmasked BGR image, accumulator and min_dist will likely
+        #require much tuning. Could add min/max radius in px if required.
         gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         circles = cv2.HoughCircles(
                 gray_image,
