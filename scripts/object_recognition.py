@@ -21,8 +21,11 @@ closeKernSizeForFar = 30
 class ObjectRecognizer():
     def __init__(self):
         self.bridge = CvBridge()
+        self.block_matcher = cv2.StereoBM()
         self.pointMessage = PointStamped()
         self.latest_disp = None
+        self.latest_left_rect = None
+        self.latest_right_rect = None
         self.image_pub = rospy.Publisher("/Object_Recognizer_Node/Boxed",
                                          Image,
                                          queue_size = 10)
@@ -80,7 +83,7 @@ class ObjectRecognizer():
         hsv_image = self._convert_raw_2_hsv(rect_im)
         rect_right = self.latest_right_rect
         rect_left = self.latest_left_rect
-        disparity = cv2.StereoBM.compute(rect_left, rect_right)
+        disparity = self.block_matcher.compute(rect_left, rect_right)
         drawn_image, bx, by = self._find_ball(hsv_image)
         if bx < self.latest_disp.shape[0] and by < self.latest_disp.shape[1]:
             disp = self.latest_disp[bx, by]
@@ -102,11 +105,11 @@ class ObjectRecognizer():
         self.rviz_cam2_pub.publish(self.pointMessage)
         rgb_image = cv2.cvtColor(drawn_image, cv2.COLOR_HSV2BGR)
         ros_image = self.bridge.cv2_to_imgmsg(rgb_image, "bgr8")
-
-        ros_disp = self.bridge.cv2_to_imgmsg(rgb_disp, "bgr8")
+        cv2_disp = cv2.normalize(disparity, 0, 255, cv2.cv.CV_MINMAX, dtype=cv2.cv.CV_8UC3)
+        ros_disp = self.bridge.cv2_to_imgmsg(cv2_disp, encoding="passthrough")
 
         self.image_pub.publish(ros_image)
-        self.disp_pub.publish
+        self.disp_pub.publish(ros_disp)
 
     def _find_depth(self, disp, x, y):
         B = self.latest_disp_params.T
