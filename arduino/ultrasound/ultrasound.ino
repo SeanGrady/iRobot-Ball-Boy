@@ -11,13 +11,15 @@ long getDistance(int triggerPin, int echoPin) {
   long distance = 0;
   long duration = 0;
 
+  digitalWrite(triggerPin, LOW);
+  delayMicroseconds(2);
   digitalWrite(triggerPin, HIGH);
-  delayMicroseconds(10);
+  delayMicroseconds(15);
   digitalWrite(triggerPin, LOW);
 
   duration = pulseIn(echoPin, HIGH);
 
-  distance = duration/58.2;
+  distance = duration*(0.0170145);
 
   return distance;
 }
