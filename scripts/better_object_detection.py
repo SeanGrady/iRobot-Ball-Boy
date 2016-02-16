@@ -1,4 +1,9 @@
+#!/usr/bin/env python
+
 import numpy as np
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
+import rospy
 import imutils
 import cv2
 
@@ -16,7 +21,14 @@ class BallDetector():
         self.hough_min_dist = 50
         self.hough_radius_min = 10
         self.hough_radius_max = 300
-        self.camera = cv2.VideoCapture(0)
+        #self.camera = cv2.VideoCapture(0)
+        self.bridge = CvBridge()
+        self.raw_image_sub = rospy.Subscriber(
+                "/camera/image_raw",
+                Image,
+                self.handle_incoming_image
+        )
+        rospy.spin()
 
     def create_hsv_mask(self, rgb_image):
         #blur frame and convert to HSV colorspace
@@ -77,12 +89,26 @@ class BallDetector():
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
         circled_image = self.draw_circles(raw_image, circles)
-        return circled_image
+        return circled_image, circles
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
-        circled_image = self.hough_circles(masked_image, image)
-        return circled_image
+        circled_image, circles = self.hough_circles(masked_image, image)
+        return circled_image, circles
+
+    def handle_incoming_image(self, ros_image):
+        image = self.bridge.imgmsg_to_cv2(
+                ros_image,
+                desired_encoding="passthrough"
+        )
+
+    def ball_positioned(self, image):
+        circled_image, circles = self.color_circles(image)
+        ball_ready = 0
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+            for x, y, r in circles:
+
 
     def test_cv_func(self, function):
         #apply a function that returns a displayable image to a video stream
@@ -99,4 +125,4 @@ class BallDetector():
 
 if __name__ == "__main__":
     bd = BallDetector()
-    bd.test_cv_func(bd.color_circles)
+    #bd.test_cv_func(bd.color_circles)
