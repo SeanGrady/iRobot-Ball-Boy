@@ -5,15 +5,17 @@ import cv2
 class BallDetector():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
-        self.hsv_lower = (83, 83, 40)
-        self.hsv_upper = (98, 216, 143)
-        self.blur_size = 11
-        openKernSize = 9
-        closeKernSize = 9
+        self.hsv_lower = (42, 113, 55)
+        self.hsv_upper = (68, 255, 255)
+        self.blur_size = 9
+        openKernSize = 20
+        closeKernSize = 5
         self.close_kernel = np.ones((closeKernSize,closeKernSize), np.uint8)
         self.open_kernel = np.ones((openKernSize,openKernSize), np.uint8)
-        self.hough_accumulator = 1.5
-        self.hough_min_dist = 80
+        self.hough_accumulator = 3
+        self.hough_min_dist = 50
+        self.hough_radius_min = 10
+        self.hough_radius_max = 300
         self.camera = cv2.VideoCapture(0)
 
     def create_hsv_mask(self, rgb_image):
@@ -55,7 +57,7 @@ class BallDetector():
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for x, y, r in circles:
-                cv2.circle(image, (x, y), r, (0, 255, 0), 4)
+                cv2.circle(image, (x, y), r, (0, 0, 255), 4)
                 cv2.rectangle(
                         image,
                         (x - 5, y - 5),
@@ -71,10 +73,15 @@ class BallDetector():
         masked_image = self.mask_image(image, mask)
         return masked_image
 
-    def hough_circles(self, image):
+    def hough_circles(self, image, raw_image):
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
-        circled_image = self.draw_circles(image, circles)
+        circled_image = self.draw_circles(raw_image, circles)
+        return circled_image
+
+    def color_circles(self, image):
+        masked_image = self.threshold_color(image)
+        circled_image = self.hough_circles(masked_image, image)
         return circled_image
 
     def test_cv_func(self, function):
@@ -92,4 +99,4 @@ class BallDetector():
 
 if __name__ == "__main__":
     bd = BallDetector()
-    bd.test_cv_func(bd.threshold_color)
+    bd.test_cv_func(bd.color_circles)
