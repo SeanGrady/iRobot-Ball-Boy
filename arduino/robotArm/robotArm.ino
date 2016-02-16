@@ -4,10 +4,11 @@
 #include "utility/Adafruit_MS_PWMServoDriver.h"
 #include "Sensor.h"
 #include "Motor.h"
-
+#include "Ultrasound.h"
 
 Sensor s;
 Motor m;
+Ultrasound u;
 
 void setup() {
   Serial.begin(9600);
@@ -63,6 +64,19 @@ void loop() {
       }
       else if(code == 'd'){
         m.stopMotors();
+      } else if(code == 'u') {
+        //Serial.println("Getting ultrasound distances");
+        code = Serial.read();
+        if(code == '1') {
+          // Front
+          Serial.println(String(u.getDistance(0)));
+        } else if(code == '2') {
+          // Left
+          Serial.println(String(u.getDistance(1)));
+        } else if(code == '3') {
+          // Right
+          Serial.println(String(u.getDistance(2)));
+        }
       }
     }
   }
