@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+from code import interact
 from geometry_msgs.msg import Twist
 from assignment1.srv import *
 
