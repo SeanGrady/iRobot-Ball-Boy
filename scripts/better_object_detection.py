@@ -60,6 +60,7 @@ class BallDetector():
         mask = cv2.inRange(hsv, self.hsv_lower, self.hsv_upper)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.close_kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.open_kernel)
+        mask = cv2.dilate(mask, self.open_kernel)
         return mask
 
     def mask_image(self, image, mask):
@@ -142,7 +143,6 @@ class BallDetector():
                 print x, y, r
                 if x in self.grab_xrange and y in self.grab_yrange and r > 150:
                     ball_ready = 1
-
         return ball_ready
 
     def test_cv_func(self, function):
