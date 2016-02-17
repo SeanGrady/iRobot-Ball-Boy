@@ -5,6 +5,7 @@ import math
 import rospy
 import struct
 from cse291_team_2.srv import armPose
+from assignment1.msg import grabBall
 
 class ArmController():
     def __init__(self):
@@ -16,7 +17,9 @@ class ArmController():
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
                                           self.handle_pose_req)
-        self.arm_state = {
+			 
+		
+		self.arm_state = {
                 "M1":0,
                 "M2":0,
                 "M3":0,
