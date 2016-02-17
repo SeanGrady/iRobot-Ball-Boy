@@ -9,6 +9,7 @@ from code import interact
 from sensor_msgs.msg import Image
 from stereo_msgs.msg import DisparityImage
 from sensor_msgs.msg import CameraInfo
+from geometry_msgs.msg import PointStamped
 
 ball_hsv_color = (6, 138, 190)
 ball_threshold = (5, 10, 10)
@@ -20,9 +21,22 @@ closeKernSizeForFar = 30
 class ObjectRecognizer():
     def __init__(self):
         self.bridge = CvBridge()
+        self.block_matcher = cv2.StereoBM()
+        self.pointMessage = PointStamped()
         self.latest_disp = None
+        self.latest_left_rect = None
+        self.latest_right_rect = None
         self.image_pub = rospy.Publisher("/Object_Recognizer_Node/Boxed",
                                          Image,
+                                         queue_size = 10)
+        self.rviz_ball_pub = rospy.Publisher("/rviz_points/ball",
+                                         PointStamped,
+                                         queue_size = 10)
+        self.rviz_cam1_pub = rospy.Publisher("/rviz_points/camera_2",
+                                         PointStamped,
+                                         queue_size = 10)
+        self.rviz_cam2_pub = rospy.Publisher("/rviz_points/camera_1",
+                                         PointStamped,
                                          queue_size = 10)
         rospy.init_node("object_recognizer")
         self.rectified_sub= rospy.Subscriber(
@@ -30,10 +44,25 @@ class ObjectRecognizer():
             Image,
             self._handle_incoming_rect
         )
+        self.left_rectified_sub= rospy.Subscriber(
+            "/my_stereo/left/image_rect",
+            Image,
+            self._handle_incoming_left
+        )
+        self.right_rectified_sub= rospy.Subscriber(
+            "/my_stereo/right/image_rect",
+            Image,
+            self._handle_incoming_right
+        )
         self.disp_sub = rospy.Subscriber(
                 "/my_stereo/disparity",
                 DisparityImage,
                 self._handle_incoming_disp
+        )
+        self.disp_pub = rospy.Publisher(
+                "/cv2_disparity",
+                Image,
+                queue_size = 10
         )
         rospy.spin()
 
@@ -42,17 +71,45 @@ class ObjectRecognizer():
         self.latest_disp = image
         self.latest_disp_params = disp_im
 
+    def _handle_incoming_left(self, left_rect_im):
+        image = self.bridge.imgmsg_to_cv2(left_rect_im, desired_encoding="passthrough")
+        self.latest_left_rect = image
+
+    def _handle_incoming_right(self, right_rect_im):
+        image = self.bridge.imgmsg_to_cv2(right_rect_im, desired_encoding="passthrough")
+        self.latest_right_rect = image
+
     def _handle_incoming_rect(self, rect_im):
         hsv_image = self._convert_raw_2_hsv(rect_im)
+        rect_right = self.latest_right_rect
+        rect_left = self.latest_left_rect
+        disparity = self.block_matcher.compute(rect_left, rect_right)
         drawn_image, bx, by = self._find_ball(hsv_image)
         if bx < self.latest_disp.shape[0] and by < self.latest_disp.shape[1]:
             disp = self.latest_disp[bx, by]
             print "Disp at ball: ", disp
             depth = self._find_depth(disp, bx, by)
             print "depth at ball: ", depth
+
+        self.pointMessage.header.stamp = rospy.Time.now()
+        self.pointMessage.header.frame_id = "map"
+        self.pointMessage.point.x = 0
+        self.pointMessage.point.y = 0
+        self.pointMessage.point.z = 0
+        self.rviz_cam1_pub.publish(self.pointMessage)
+        self.pointMessage.header.stamp = rospy.Time.now()
+        self.pointMessage.header.frame_id = "map"
+        self.pointMessage.point.x = 1
+        self.pointMessage.point.y = 0
+        self.pointMessage.point.z = 0
+        self.rviz_cam2_pub.publish(self.pointMessage)
         rgb_image = cv2.cvtColor(drawn_image, cv2.COLOR_HSV2BGR)
         ros_image = self.bridge.cv2_to_imgmsg(rgb_image, "bgr8")
+        cv2_disp = cv2.normalize(disparity, 0, 255, cv2.cv.CV_MINMAX, dtype=cv2.cv.CV_8UC3)
+        ros_disp = self.bridge.cv2_to_imgmsg(cv2_disp, encoding="passthrough")
+
         self.image_pub.publish(ros_image)
+        self.disp_pub.publish(ros_disp)
 
     def _find_depth(self, disp, x, y):
         B = self.latest_disp_params.T
