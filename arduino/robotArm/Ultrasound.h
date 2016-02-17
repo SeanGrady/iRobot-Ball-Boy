@@ -10,8 +10,8 @@ class Ultrasound
     2,3 -> left sensor
     4,5 -> right sensor
   */
-  int triggerPin[3] = {0,2,4};
-  int echoPin[3] = {1,3,5};
+  int triggerPin[3] = {2,4,6};
+  int echoPin[3] = {3,5,7};
 public:
 	Ultrasound();
 	long getDistance(int channel);
