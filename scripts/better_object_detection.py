@@ -10,23 +10,38 @@ import cv2
 class BallDetector():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
-        self.hsv_lower = (42, 113, 55)
-        self.hsv_upper = (68, 255, 255)
+        rospy.init_node("ball_detector")
+        self.grab_xrange = range(270, 370)
+        self.grab_yrange = range(190,290 )
+        self.hsv_lower = (26, 75, 46)
+        self.hsv_upper = (58, 255, 255)
         self.blur_size = 9
         openKernSize = 20
         closeKernSize = 5
         self.close_kernel = np.ones((closeKernSize,closeKernSize), np.uint8)
         self.open_kernel = np.ones((openKernSize,openKernSize), np.uint8)
-        self.hough_accumulator = 3
-        self.hough_min_dist = 50
+        self.hough_accumulator = 1
+        self.hough_min_dist = 100
         self.hough_radius_min = 10
-        self.hough_radius_max = 300
+        self.hough_radius_max = 600
+        self.hough_param1 = 50
+        self.hough_param2 = 30
         #self.camera = cv2.VideoCapture(0)
         self.bridge = CvBridge()
         self.raw_image_sub = rospy.Subscriber(
                 "/camera/image_raw",
                 Image,
                 self.handle_incoming_image
+        )
+        self.image_pub = rospy.Publisher(
+                "/Ball_Detector/circled_image",
+                Image,
+                queue_size = 10
+        )
+        self.mask_pub = rospy.Publisher(
+                "/Ball_Detector/masked_image",
+                Image,
+                queue_size = 10
         )
         rospy.spin()
 
@@ -60,7 +75,11 @@ class BallDetector():
                 gray_image,
                 cv2.cv.CV_HOUGH_GRADIENT,
                 self.hough_accumulator,
-                self.hough_min_dist
+                self.hough_min_dist,
+                param1=self.hough_param1,
+                param2=self.hough_param2,
+                minRadius=self.hough_radius_min,
+                maxRadius=self.hough_radius_max
         )
         return circles
 
@@ -83,6 +102,7 @@ class BallDetector():
         #threshold image on color and return result to display
         mask = self.create_hsv_mask(image)
         masked_image = self.mask_image(image, mask)
+        self.publish_mask(masked_image)
         return masked_image
 
     def hough_circles(self, image, raw_image):
@@ -91,16 +111,27 @@ class BallDetector():
         circled_image = self.draw_circles(raw_image, circles)
         return circled_image, circles
 
+    def publish_mask(self, mask_image):
+        ros_image = self.bridge.cv2_to_imgmsg(mask_image, "bgr8")
+        self.mask_pub.publish(ros_image)
+
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
         circled_image, circles = self.hough_circles(masked_image, image)
+        self.publish_cv_image(circled_image)
         return circled_image, circles
 
     def handle_incoming_image(self, ros_image):
         image = self.bridge.imgmsg_to_cv2(
                 ros_image,
-                desired_encoding="passthrough"
+                desired_encoding="bgr8"
         )
+        ball_ready = self.ball_positioned(image)
+        #print ball_ready
+
+    def publish_cv_image(self, cv_image):
+        ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
+        self.image_pub.publish(ros_image)
 
     def ball_positioned(self, image):
         circled_image, circles = self.color_circles(image)
@@ -108,7 +139,11 @@ class BallDetector():
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for x, y, r in circles:
+                print x, y, r
+                if x in self.grab_xrange and y in self.grab_yrange and r > 150:
+                    ball_ready = 1
 
+        return ball_ready
 
     def test_cv_func(self, function):
         #apply a function that returns a displayable image to a video stream
