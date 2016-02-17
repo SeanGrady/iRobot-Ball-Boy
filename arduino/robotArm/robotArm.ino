@@ -26,11 +26,23 @@ void loop() {
 
     if(Serial.available()) {
       code = Serial.read();
+
+      /**
+       *  S returns current sensor values of the joints.
+       */
       if(code == 's') {
 
         Serial.println(s.getSensorValues());
       
-      } else if(code == 'm') {
+      }
+      /** 
+       *  U: This option followed by 5 digits 
+       *  first: motor number
+       *  second: direction
+       *  third -fifth: 3 digi angle ex: 050 = 50 degrees
+       *  
+       */
+      else if(code == 'm') {
         
         long temp = Serial.parseInt();
             sensorid = (long) temp / 10000;
@@ -64,16 +76,26 @@ void loop() {
       }
       else if(code == 'd'){
         m.stopMotors();
-      } else if(code == 'u') {
+      } 
+      /**
+       *    U option followed by eithe 1,2,3 returns the ultrasound
+       *    reading. 1 = front, 2 = left, 3 = right. 
+       *    
+       *    Return Type: String
+       */
+      else if(code == 'u') {
         //Serial.println("Getting ultrasound distances");
-        code = Serial.read();
-        if(code == '1') {
+        int uval = Serial.parseInt();
+        
+        long dist = 0;
+        if(uval == 1) {
           // Front
-          Serial.println(String(u.getDistance(0)));
-        } else if(code == '2') {
+          dist = u.getDistance(0);
+          Serial.println(String(dist));
+        } else if(uval == 2) {
           // Left
           Serial.println(String(u.getDistance(1)));
-        } else if(code == '3') {
+        } else if(uval == 3) {
           // Right
           Serial.println(String(u.getDistance(2)));
         }

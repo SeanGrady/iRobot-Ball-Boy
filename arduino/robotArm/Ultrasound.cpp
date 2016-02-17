@@ -3,6 +3,10 @@
 
 Ultrasound::Ultrasound() {
   // Nothing to do on the constructor
+  for(int i=0; i<3; ++i) {
+    pinMode(triggerPin[i], OUTPUT);
+    pinMode(echoPin[i], INPUT);
+  }
 }
 
 long Ultrasound::getDistance(int channel) {
