@@ -5,6 +5,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 import rospy
 import imutils
+from assignment1.msg import grabBall
 import cv2
 
 class BallDetector():
@@ -41,6 +42,11 @@ class BallDetector():
         self.mask_pub = rospy.Publisher(
                 "/Ball_Detector/masked_image",
                 Image,
+                queue_size = 10
+        )
+        self.ball_pub = rospy.Publisher(
+                "/Ball_Detector/ball_positioned",
+                grabBall,
                 queue_size = 10
         )
         rospy.spin()
@@ -143,6 +149,9 @@ class BallDetector():
                 print x, y, r
                 if x in self.grab_xrange and y in self.grab_yrange and r > 150:
                     ball_ready = 1
+        grab_ball = grabBall()
+        grabBall.in_position = ball_ready
+        self.ball_pub.publish(grab_ball)
         return ball_ready
 
     def test_cv_func(self, function):
