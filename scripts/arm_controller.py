@@ -4,7 +4,7 @@ import serial
 import math
 import rospy
 import struct
-from cse291_team_2.srv import armPose
+from assignment1.srv import armPose
 from assignment1.msg import grabBall
 
 class ArmController():
@@ -17,9 +17,12 @@ class ArmController():
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
                                           self.handle_pose_req)
-			 
-		
-		self.arm_state = {
+        self.grab_ball_sub = rospy.Subscriber(
+                "/Ball_Detector/ball_positioned",
+                grabBall,
+                self.handle_incoming_ball
+        )
+        self.arm_state = {
                 "M1":0,
                 "M2":0,
                 "M3":0,
@@ -45,6 +48,9 @@ class ArmController():
         #self.update_joint_states()
         self.connect_robot()
         rospy.spin()
+
+    def handle_incoming_ball(self, grab_ball):
+        print grab_ball.in_position
 
     def handle_pose_req(self, pose_req):
         self.requested_pose = {

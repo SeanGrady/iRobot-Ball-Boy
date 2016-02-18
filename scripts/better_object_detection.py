@@ -150,7 +150,7 @@ class BallDetector():
                 if x in self.grab_xrange and y in self.grab_yrange and r > 150:
                     ball_ready = 1
         grab_ball = grabBall()
-        grabBall.in_position = ball_ready
+        grabBall.in_position = 'grab'
         self.ball_pub.publish(grab_ball)
         return ball_ready
 

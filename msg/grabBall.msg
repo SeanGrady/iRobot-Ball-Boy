@@ -1,1 +1,1 @@
-int8 in_position
+string in_position
