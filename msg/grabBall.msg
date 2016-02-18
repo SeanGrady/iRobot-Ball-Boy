@@ -1,1 +1,1 @@
-string in_position
+uint8 in_position
