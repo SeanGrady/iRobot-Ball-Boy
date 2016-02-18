@@ -6,14 +6,17 @@ from sensor_msgs.msg import Image
 import rospy
 import imutils
 from assignment1.msg import grabBall
+from collections import deque
 import cv2
 
 class BallDetector():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
         rospy.init_node("ball_detector")
+        self.grab_buffer = deque(maxlen=20)
         self.grab_xrange = range(270, 370)
         self.grab_yrange = range(190,290 )
+        self.grab_size = 100
         self.hsv_lower = (26, 75, 46)
         self.hsv_upper = (58, 255, 255)
         self.blur_size = 9
@@ -26,7 +29,7 @@ class BallDetector():
         self.hough_radius_min = 10
         self.hough_radius_max = 600
         self.hough_param1 = 50
-        self.hough_param2 = 30
+        self.hough_param2 = 40
         #self.camera = cv2.VideoCapture(0)
         self.bridge = CvBridge()
         self.raw_image_sub = rospy.Subscriber(
@@ -142,16 +145,21 @@ class BallDetector():
 
     def ball_positioned(self, image):
         circled_image, circles = self.color_circles(image)
-        ball_ready = 0
+        see_ball = 0
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for x, y, r in circles:
-                print x, y, r
-                if x in self.grab_xrange and y in self.grab_yrange and r > 150:
-                    ball_ready = 1
+                #print x, y, r
+                if x in self.grab_xrange and y in self.grab_yrange and r > self.grab_size:
+                    see_ball = 1
+        self.grab_buffer.append(see_ball)
+        ball_ready = 0
+        if sum(self.grab_buffer) >= 10:
+            ball_ready = 1
         grab_ball = grabBall()
         grab_ball.in_position = ball_ready
         self.ball_pub.publish(grab_ball)
+        #print see_ball, ball_ready
         return ball_ready
 
     def test_cv_func(self, function):
