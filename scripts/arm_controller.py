@@ -10,6 +10,7 @@ from assignment1.msg import grabBall
 class ArmController():
     def __init__(self):
         self.connection = None
+        self.prev_grab = 0
         #self.arm_struct = struct.Struct('')
         self.port = '/dev/ttyACM0'
         self.ang_len = 2
@@ -53,14 +54,20 @@ class ArmController():
         #print self.grab
 
     def grab_or_drop(self):
-        if self.grab:
+        if self.grab and not self.prev_grab:
+            self.arm_max('bot')
+            rospy.sleep(5)
             self.arm_max('grab')
+            rospy.sleep(2)
+            self.arm_max('top')
+            rospy.sleep(5)
         else:
             self.arm_max('drop')
+            rospy.sleep(2)
+        self.prev_grab = self.grab
 
     def control_loop(self):
         while not rospy.is_shutdown():
-            rospy.sleep(2)
             self.grab_or_drop()
 
     def handle_pose_req(self, pose_req):
@@ -77,11 +84,14 @@ class ArmController():
     def arm_max(self,command):
 	
 	if(command == 'bot'):
-		self.connection.write('m30100')
+		#self.connection.write('m30100')
 		self.connection.write('m20100')
+                rospy.sleep(2)
 		self.connection.write('m10100')
 	elif(command == 'top'):
+		#self.connection.write('m31100')
 		self.connection.write('m21100')
+                rospy.sleep(2)
 		self.connection.write('m11100')
 	elif(command == 'drop'):
 		self.connection.write('m30100')
@@ -141,12 +151,15 @@ class ArmController():
             print "Connection failed."
         else:
             print "Connected to arm."
+            """
+            rospy.sleep(2)
             self.arm_max('bot')
             rospy.sleep(5)
             self.control_loop()
+            """
             #self.update_joint_states()
             #print "Joint States are: ",self.arm_state
-            #self.assume_pose()
+            self.assume_pose()
 
 if __name__=="__main__":
     arm_controller = ArmController()
