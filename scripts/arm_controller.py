@@ -10,7 +10,6 @@ from assignment1.msg import grabBall
 class ArmController():
     def __init__(self):
         self.connection = None
-        print self.connection
         #self.arm_struct = struct.Struct('')
         self.port = '/dev/ttyACM0'
         self.ang_len = 2
@@ -50,7 +49,19 @@ class ArmController():
         rospy.spin()
 
     def handle_incoming_ball(self, grab_ball):
-        print grab_ball.in_position
+        self.grab = grab_ball.in_position
+        #print self.grab
+
+    def grab_or_drop(self):
+        if self.grab:
+            self.arm_max('grab')
+        else:
+            self.arm_max('drop')
+
+    def control_loop(self):
+        while not rospy.is_shutdown():
+            rospy.sleep(2)
+            self.grab_or_drop()
 
     def handle_pose_req(self, pose_req):
         self.requested_pose = {
@@ -84,7 +95,7 @@ class ArmController():
         for motor, angle in self.requested_pose:
             self.connection.write(self.motor_req[motor] + angle + '\n')
         """
-	while(True):
+        while not rospy.is_shutdown():
 		command = raw_input ("Enter Motor Command: ")
         	if(command == 's'):
 			self.connection.write('s')
@@ -104,7 +115,6 @@ class ArmController():
         pass
 
     def update_joint_states(self):
-
 	time.sleep(2)	
 	self.connection.write('s')
         print self.connection.readline()
@@ -127,13 +137,16 @@ class ArmController():
 		    baudrate=9600,
                     timeout=1
             )
-            print "Connected to arm."
         except:
             print "Connection failed."
         else:
-            self.update_joint_states()
-            print "Joint States are: ",self.arm_state
-            self.assume_pose()
+            print "Connected to arm."
+            self.arm_max('bot')
+            rospy.sleep(5)
+            self.control_loop()
+            #self.update_joint_states()
+            #print "Joint States are: ",self.arm_state
+            #self.assume_pose()
 
 if __name__=="__main__":
     arm_controller = ArmController()
