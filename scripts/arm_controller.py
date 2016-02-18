@@ -157,8 +157,6 @@ class ArmController():
             rospy.sleep(5)
             self.control_loop()
             """
-            #self.update_joint_states()
-            #print "Joint States are: ",self.arm_state
             self.assume_pose()
 
 if __name__=="__main__":
