@@ -89,16 +89,17 @@ void Motor::moveMotor3(int dir,int angle) {
 		currentSensorVal = sensor.getSensor3Value();
 
     
-    if(dir == 0 && temp == 10000){
+    /*if(dir == 0 && temp == 10000){
       break;
     }
-    else if(dir == 1 && currentSensorVal > 800){
+    else */
+    if(dir == 1 && currentSensorVal > 800){
       break;
     }
     else if(dir == 0 && currentSensorVal < 600){
       break;
     }
-    temp++;
+    //temp++;
 	}
 	myMotor3->setSpeed(0);
 }

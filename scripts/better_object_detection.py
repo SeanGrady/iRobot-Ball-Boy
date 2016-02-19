@@ -14,8 +14,8 @@ class BallDetector():
         #define many things. Not sure if this would be better somewhere else
         rospy.init_node("ball_detector")
         self.grab_buffer = deque(maxlen=20)
-        self.grab_xrange = range(270, 370)
-        self.grab_yrange = range(190,290 )
+        self.grab_xrange = range(0, 640)
+        self.grab_yrange = range(0, 480)
         self.grab_size = 100
         self.hsv_lower = (26, 75, 46)
         self.hsv_upper = (58, 255, 255)
