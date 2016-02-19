@@ -51,26 +51,22 @@ class ArmController():
 
     def handle_incoming_ball(self, grab_ball):
         self.grab = grab_ball.in_position
+        #print self.grab
 
     def grab_or_drop(self):
         if self.grab and not self.prev_grab:
             print "grabbing"
             self.arm_max('bot')
-            rospy.sleep(10)
+            rospy.sleep(7)
             self.arm_max('grab')
             rospy.sleep(2)
-            angles = self.read_sensors()
-            print angles
             self.arm_max('top')
-            rospy.sleep(10)
-            self.prev_grab = 1
-        elif self.prev_grab and not self.grab:
+            rospy.sleep(5)
+        else:
             print "dropping"
             self.arm_max('drop')
-            angles = self.read_sensors()
-            print angles
-            rospy.sleep(3)
-            self.prev_grab = 0
+            rospy.sleep(2)
+        self.prev_grab = self.grab
 
     def control_loop(self):
         while not rospy.is_shutdown():
@@ -98,9 +94,9 @@ class ArmController():
 		self.connection.write('m21100')
 		self.connection.write('m11100')
 	elif(command == 'drop'):
-		self.connection.write('m30300')
+		self.connection.write('m30100')
 	elif(command == 'grab'):
-		self.connection.write('m31300')
+		self.connection.write('m31100')
 			
 	self.connection.write(command)
 
@@ -128,16 +124,15 @@ class ArmController():
     def horizontal_pose(self):
         pass
 
-    def read_sensors(self):
-	self.connection.write('s')
-        angle_string = self.connection.readline()
-        angles = angle_string.strip().split()
-        angles = [int(angle) for angle in angles]
-        return angles
-
     def update_joint_states(self):
 	time.sleep(2)	
-        angles = self.read_sensors()
+	self.connection.write('s')
+        print self.connection.readline()
+        angle_string = self.connection.readline()
+        print angle_string
+        angles = angle_string.strip().split()
+        angles = [int(angle) for angle in angles]
+        print angles
         print self.arm_state.keys()
         for motor, angle in zip(self.arm_state.keys(), angles):
             self.arm_state[motor] = angle
@@ -156,13 +151,13 @@ class ArmController():
             print "Connection failed."
         else:
             print "Connected to arm."
+            """
             rospy.sleep(2)
-            self.arm_max('top')
-            rospy.sleep(10)
-            self.arm_max('drop')
-            rospy.sleep(2)
+            self.arm_max('bot')
+            rospy.sleep(5)
             self.control_loop()
-            #self.assume_pose()
+            """
+            self.assume_pose()
 
 if __name__=="__main__":
     arm_controller = ArmController()
