@@ -3,15 +3,17 @@
 import numpy as np
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
+from std_msgs.msg import Bool
 import rospy
 import imutils
-from assignment1.msg import grabBall
+from assignment1.msg import camera_data
 from collections import deque
 import cv2
 
 class BallDetector():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
+        self.activate_camera = False
         rospy.init_node("ball_detector")
         self.grab_buffer = deque(maxlen=20)
         self.grab_xrange = range(0, 640)
@@ -37,6 +39,11 @@ class BallDetector():
                 Image,
                 self.handle_incoming_image
         )
+        self.camera_activation_sub = rospy.Subscriber(
+                "/arm_camera/activation",
+                Bool,
+                self.handle_activation_message
+        )
         self.image_pub = rospy.Publisher(
                 "/Ball_Detector/circled_image",
                 Image,
@@ -47,12 +54,18 @@ class BallDetector():
                 Image,
                 queue_size = 10
         )
-        self.ball_pub = rospy.Publisher(
-                "/Ball_Detector/ball_positioned",
-                grabBall,
+        self.camera_publisher = rospy.Publisher(
+                "/Ball_Detector/vision_info",
+                camera_data,
                 queue_size = 10
         )
         rospy.spin()
+
+    def handle_activation_message(self, message):
+        if message.data:
+            self.activate_camera = True
+        else:
+            self.activate_camera = False
 
     def create_hsv_mask(self, rgb_image):
         #blur frame and convert to HSV colorspace
@@ -132,12 +145,19 @@ class BallDetector():
         return circled_image, circles
 
     def handle_incoming_image(self, ros_image):
-        image = self.bridge.imgmsg_to_cv2(
-                ros_image,
-                desired_encoding="bgr8"
-        )
-        ball_ready = self.ball_positioned(image)
-        #print ball_ready
+        if self.arm_camera_active:
+            image = self.bridge.imgmsg_to_cv2(
+                    ros_image,
+                    desired_encoding="bgr8"
+            )
+            cam_info = self.build_camera_info(image)
+            self.camera_publisher.publish(cam_info)
+
+    def build_camera_info(self, image):
+        #image should be a bgr8 cv2 image
+        cam_info = camera_info()
+        cam_info.ball_in_grabber = self.ball_positioned(image)
+        return cam_info
 
     def publish_cv_image(self, cv_image):
         ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
@@ -156,10 +176,6 @@ class BallDetector():
         ball_ready = 0
         if sum(self.grab_buffer) >= 10:
             ball_ready = 1
-        grab_ball = grabBall()
-        grab_ball.in_position = ball_ready
-        self.ball_pub.publish(grab_ball)
-        #print see_ball, ball_ready
         return ball_ready
 
     def test_cv_func(self, function):
