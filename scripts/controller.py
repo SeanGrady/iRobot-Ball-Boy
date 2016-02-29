@@ -2,11 +2,30 @@
 
 import rospy
 from robot_camera import RobotCamera
+from std_msgs.msg import Bool
+from assignment1.msg import camera_data
 
 class RobotController():
     def __init__(self):
         rospy.init_node("robot_controller")
-#=========================== Environment Variables ============================
+        self.arm_cam_activate_pub = rospy.Publisher(
+                "/arm_camera/activation",
+                Bool,
+                queue_size = 10
+        )
+        self.arm_cam_sub = rospy.Subscriber(
+                "/arm_camera/data",
+                camera_data,
+                self.handle_incoming_arm_cam_data
+        )
+        self.front_cam_sub = rospy.Subscriber(
+                "/front_camera/data",
+                camera_data,
+                self.handle_incoming_front_cam_data
+        )
+        self.arm_cam_on = Bool()
+        self.arm_cam_on.data = False
+        #=================== Environment Variables ============================
         self.mapping_fix = False
         self.balls_collected = 0
         self.forward_cam = RobotCamera()
@@ -17,30 +36,63 @@ class RobotController():
     def control_loop(self):
         #need to map out the robot's states and come up with some kind of
         #transition scheme
+        print "done the thing"
 
-#=========================== State Functions ==================================
-    def approach_ball(self):
-        while self.forward_cam.see_ball and not self.arm_cam.see_ball:
-            if self.forward_cam.ball_centered:
-                #drive forward
-            else:
-                #center ball
+    def arm_camera_switch(self, value):
+        b_value = bool(value)
+        if self.arm_cam_on.data != b_value:
+            self.arm_cam_on.data == b_value
+            self.arm_cam_activate_pub.publish(self.arm_cam_on)
 
-    def pickup_ball(self):
-        #this is going to be a hard one...
-        """
-        while self.arm_cam.see_ball and not self.arm_cam.ball_in_grabber:
-        """
+    #======================= Callback Functions ===============================
+    def handle_incoming_arm_cam_data(self, cam_data):
+        #fill self.arm_cam object accordingly
         pass
 
-    def search(self):
+    def handle_incoming_front_cam_data(self, cam_data):
+        #fill self.front_cam object accordingly
+        pass
+
+    #======================= State Functions ==================================
+    def recover_map_fix(self):
+        self.arm_camera_switch(0)
+
+    def locate_home(self):
+        self.arm_camera_switch(0)
+
+    def search_ball(self):
+        self.arm_camera_switch(0)
         """
         while not self.forward_cam.see_ball:
             #look for balls
         """
-        pass
+
+    def search_bucket(self):
+        self.arm_camera_switch(0)
+        """
+        while not self.forward_cam.see_ball:
+            #look for balls
+        """
+
+    def approach_ball(self):
+        self.arm_camera_switch(1)
+        while self.forward_cam.see_ball and not self.arm_cam.see_ball:
+            if self.forward_cam.ball_centered:
+                #drive forward
+                pass
+            else:
+                #center ball
+                pass
+
+    def pickup_ball(self):
+        #this is going to be a hard one...
+        self.arm_camera_switch(1)
+        """
+        while self.arm_cam.see_ball and not self.arm_cam.ball_in_grabber:
+        """
 
     def return_bucket(self):
+        self.arm_camera_switch(0)
         """
         while not self.forward_cam.see_bucket:
             #look for bucket (using map to go back to home?)
@@ -49,3 +101,7 @@ class RobotController():
             #move toward bucket
         """
         pass
+
+if __name__ == "__main__":
+    rc = RobotController()
+    rc.control_loop()
