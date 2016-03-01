@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 
 import numpy as np
+import sys
+import argparse
 from cv_bridge import CvBridge, CvBridgeError
 from sensor_msgs.msg import Image
 from std_msgs.msg import Bool
@@ -13,12 +15,40 @@ import cv2
 class CamVision():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
-        self.camera_active = False
         rospy.init_node("ball_detector")
+        self.parser = argparse.ArgumentParser()
+        #camera_type should be either 'arm' or 'front'
+        self.parser.add_argument('camera_type')
+        self.parser.parse_args(namespace=self)
+        self.init_funcs(self.camera_type)
+        rospy.spin()
+
+    def init_funcs(self):
+        if self.camera_type == "arm":
+            self.init_pubsubs()
+            self.init_vision_constants()
+            self.init_arm_cam_constants()
+            self.init_cv_things()
+        elif self.camera_type == "front":
+            self.init_pubsubs()
+            self.init_vision_constants()
+            self.init_front_cam_constants()
+            self.init_cv_things()
+        else:
+            print "Camera type not recognized..."
+            sys.exit()
+
+    def init_cv_things(self):
+        self.bridge = CvBridge()
+    
+    def init_arm_cam_constants(self):
         self.grab_buffer = deque(maxlen=20)
         self.grab_xrange = range(0, 640)
         self.grab_yrange = range(0, 480)
         self.grab_size = 100
+
+    def init_vision_constants(self):
+        self.camera_active = False
         self.hsv_lower = (26, 75, 46)
         self.hsv_upper = (58, 255, 255)
         self.blur_size = 9
@@ -32,8 +62,8 @@ class CamVision():
         self.hough_radius_max = 600
         self.hough_param1 = 50
         self.hough_param2 = 40
-        #self.camera = cv2.VideoCapture(0)
-        self.bridge = CvBridge()
+
+    def init_pubsubs(self):
         self.raw_image_sub = rospy.Subscriber(
                 "/camera/image_raw",
                 Image,
@@ -59,7 +89,6 @@ class CamVision():
                 camera_data,
                 queue_size = 10
         )
-        rospy.spin()
 
     def handle_activation_message(self, message):
         if message.data:
