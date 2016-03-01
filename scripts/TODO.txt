@@ -1,0 +1,2 @@
+implement argparse in CV node to handle whether it's an arm camera or a front camera
+use namespacing so that different vision nodes publish on different topics (arm_vision vs front_vision)

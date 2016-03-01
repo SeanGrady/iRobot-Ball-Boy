@@ -10,10 +10,10 @@ from assignment1.msg import camera_data
 from collections import deque
 import cv2
 
-class BallDetector():
+class CamVision():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
-        self.activate_camera = False
+        self.camera_active = False
         rospy.init_node("ball_detector")
         self.grab_buffer = deque(maxlen=20)
         self.grab_xrange = range(0, 640)
@@ -40,22 +40,22 @@ class BallDetector():
                 self.handle_incoming_image
         )
         self.camera_activation_sub = rospy.Subscriber(
-                "/arm_camera/activation",
+                "/activation",
                 Bool,
                 self.handle_activation_message
         )
         self.image_pub = rospy.Publisher(
-                "/Ball_Detector/circled_image",
+                "/circled_image",
                 Image,
                 queue_size = 10
         )
         self.mask_pub = rospy.Publisher(
-                "/Ball_Detector/masked_image",
+                "/masked_image",
                 Image,
                 queue_size = 10
         )
-        self.camera_publisher = rospy.Publisher(
-                "/Ball_Detector/vision_info",
+        self.camera_pub = rospy.Publisher(
+                "/vision_info",
                 camera_data,
                 queue_size = 10
         )
@@ -63,9 +63,18 @@ class BallDetector():
 
     def handle_activation_message(self, message):
         if message.data:
-            self.activate_camera = True
+            self.camera_active = True
         else:
-            self.activate_camera = False
+            self.camera_active = False
+
+    def handle_incoming_image(self, ros_image):
+        if self.camera_active:
+            image = self.bridge.imgmsg_to_cv2(
+                    ros_image,
+                    desired_encoding="bgr8"
+            )
+            cam_info = self.build_camera_info(image)
+            self.camera_pub.publish(cam_info)
 
     def create_hsv_mask(self, rgb_image):
         #blur frame and convert to HSV colorspace
@@ -144,15 +153,6 @@ class BallDetector():
         self.publish_cv_image(circled_image)
         return circled_image, circles
 
-    def handle_incoming_image(self, ros_image):
-        if self.arm_camera_active:
-            image = self.bridge.imgmsg_to_cv2(
-                    ros_image,
-                    desired_encoding="bgr8"
-            )
-            cam_info = self.build_camera_info(image)
-            self.camera_publisher.publish(cam_info)
-
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
         cam_info = camera_info()
@@ -192,5 +192,4 @@ class BallDetector():
         cv2.destroyAllWindows
 
 if __name__ == "__main__":
-    bd = BallDetector()
-    #bd.test_cv_func(bd.color_circles)
+    cv = CamVision()
