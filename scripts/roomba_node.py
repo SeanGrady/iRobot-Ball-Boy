@@ -5,6 +5,7 @@ import math
 import rospy
 import struct
 from robotics_project.srv import *
+from pprint import pprint
 
 class DriveNode():
     def __init__(self):
@@ -24,6 +25,11 @@ class DriveNode():
             'dock':self.make_raw_command('143'),
             'reset':self.make_raw_command('7')
         }
+        self.pose = {
+                'angle':0.,
+                'x':0.,
+                'y':0.,
+        }
 
     def start(self):
         rospy.init_node('drive_node')
@@ -38,6 +44,40 @@ class DriveNode():
         self.connect_robot()
         self.encoder_count_reset()
         rospy.spin()
+
+    def odom_loop(self):
+        self.odom_rate = rospy.rate(10)
+        while not rospy.is_shutdown():
+            left_dist, right_dist = self.get_encoder_diffs()
+            dx, dy, da = self.calc_pose_deltas(left_dist, right_dist)
+            self.update_pose(dx, dy, da)
+            pprint(self.pose)
+
+    def calc_pose_deltas(self, left_dist, right_dist):
+        #THIS IS ONLY VALID FOR SMALL TIMESTEPS! (where cos(delta_ang) ~= 1)
+        center_dist = (left_dist + right_dist) / 2.
+        delta_angle = (right_dist - left_dist) / 2.
+        delta_x = center_dist * math.cos(self.pose['angle'])
+        delta_y = center_dist * math.sin(self.pose['angle'])
+        return delta_x, delta_y, delta_angle
+
+    def update_pose(self, dx, dy, da):
+        self.pose['angle'] += da
+        self.pose['x'] += dx
+        self.pose['y'] += dy
+
+    def get_encoder_diffs():
+        left_counts, right_counts = self.get_encoder_counts()
+        left_diff = left_counts - self.left_total
+        right_diff = right_counts - self.right_total
+        left_mm = self.counts_to_mm(left_diff)
+        right_mm = self.counts_to_mm(right_diff)
+        return left_mm, right_mm
+
+    def counts_to_mm(self, counts):
+        mm = counts * (1/508.8) * (math.pi*72)
+        return mm
+
 
     def make_drive_command(self, vel, rot):
         #this is to keep vl and vr between -500 and 500 
