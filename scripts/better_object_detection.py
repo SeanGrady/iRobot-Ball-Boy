@@ -105,6 +105,44 @@ class CamVision():
             cam_info = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
 
+    def build_camera_info(self, image):
+        #image should be a bgr8 cv2 image
+        cam_info = camera_info()
+        cam_info.ball_in_grabber = self.ball_positioned(image)
+        return cam_info
+
+    def ball_positioned(self, image):
+        circled_image, circles = self.color_circles(image)
+        ball_ready = self.time_avg_balls(circles)
+        return ball_ready
+
+    def time_avg_balls(self, circles):
+        see_ball = 0
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+            for x, y, r in circles:
+                #print x, y, r
+                if x in self.grab_xrange and y in self.grab_yrange and r > self.grab_size:
+                    see_ball = 1
+        self.grab_buffer.append(see_ball)
+        ball_ready = 0
+        if sum(self.grab_buffer) >= 10:
+            ball_ready = 1
+        return ball_ready
+
+    def color_circles(self, image):
+        masked_image = self.threshold_color(image)
+        circled_image, circles = self.hough_circles(masked_image, image)
+        self.publish_cv_image(circled_image)
+        return circled_image, circles
+
+    def threshold_color(self, image):
+        #threshold image on color and return result to display
+        mask = self.create_hsv_mask(image)
+        masked_image = self.mask_image(image, mask)
+        self.publish_mask(masked_image)
+        return masked_image
+
     def create_hsv_mask(self, rgb_image):
         #blur frame and convert to HSV colorspace
         #may end up resizing frame if need more FPS on odroid
@@ -127,6 +165,12 @@ class CamVision():
         #There's probably a cleaner way to do this but it's fast
         masked_image = cv2.bitwise_and(image, image, mask = mask)
         return masked_image
+
+    def hough_circles(self, image, raw_image):
+        #find circles, draw them on the image, and return result to display
+        circles = self.find_circles(image)
+        circled_image = self.draw_circles(raw_image, circles)
+        return circled_image, circles
 
     def find_circles(self, image):
         #Assumes unmasked BGR image, accumulator and min_dist will likely
@@ -159,53 +203,13 @@ class CamVision():
                 )
         return image
 
-    def threshold_color(self, image):
-        #threshold image on color and return result to display
-        mask = self.create_hsv_mask(image)
-        masked_image = self.mask_image(image, mask)
-        self.publish_mask(masked_image)
-        return masked_image
-
-    def hough_circles(self, image, raw_image):
-        #find circles, draw them on the image, and return result to display
-        circles = self.find_circles(image)
-        circled_image = self.draw_circles(raw_image, circles)
-        return circled_image, circles
-
     def publish_mask(self, mask_image):
         ros_image = self.bridge.cv2_to_imgmsg(mask_image, "bgr8")
         self.mask_pub.publish(ros_image)
 
-    def color_circles(self, image):
-        masked_image = self.threshold_color(image)
-        circled_image, circles = self.hough_circles(masked_image, image)
-        self.publish_cv_image(circled_image)
-        return circled_image, circles
-
-    def build_camera_info(self, image):
-        #image should be a bgr8 cv2 image
-        cam_info = camera_info()
-        cam_info.ball_in_grabber = self.ball_positioned(image)
-        return cam_info
-
     def publish_cv_image(self, cv_image):
         ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
         self.image_pub.publish(ros_image)
-
-    def ball_positioned(self, image):
-        circled_image, circles = self.color_circles(image)
-        see_ball = 0
-        if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
-            for x, y, r in circles:
-                #print x, y, r
-                if x in self.grab_xrange and y in self.grab_yrange and r > self.grab_size:
-                    see_ball = 1
-        self.grab_buffer.append(see_ball)
-        ball_ready = 0
-        if sum(self.grab_buffer) >= 10:
-            ball_ready = 1
-        return ball_ready
 
     def test_cv_func(self, function):
         #apply a function that returns a displayable image to a video stream
