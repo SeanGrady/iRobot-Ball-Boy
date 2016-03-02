@@ -39,6 +39,7 @@ class CamVision():
             sys.exit()
 
     def init_cv_things(self):
+        self.circle_buffer = deque(maxlen=20)
         self.bridge = CvBridge()
     
     def init_arm_cam_constants(self):
@@ -129,6 +130,17 @@ class CamVision():
         if sum(self.grab_buffer) >= 10:
             ball_ready = 1
         return ball_ready
+
+    def time_agv_balls_experimental(self, circles):
+        if circles is not None:
+            circles = np.round(circles[0, :]).astype("int")
+            for circle in circles:
+                closest_ind = self.circle_buffer.index(
+                        min(
+                            self.circle_buffer,
+                            key=lambda x: np.linalg.norm(circle - x)
+                        )
+                )
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
