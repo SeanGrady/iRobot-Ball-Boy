@@ -66,6 +66,7 @@ class CamVision():
         self.grab_size = 100
 
     def init_front_cam_constants(self):
+        #probably things to do with the bucket
         pass
 
     def init_pubsubs(self):
