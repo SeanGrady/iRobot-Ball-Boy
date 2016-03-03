@@ -12,6 +12,24 @@ from assignment1.msg import camera_data
 from collections import deque
 import cv2
 
+class VisionConstants:
+    def __init__(self):
+        self.camera_active = False
+        self.hsv_lower = (26, 75, 46)
+        self.hsv_upper = (58, 255, 255)
+        self.blur_size = 9
+        self.hough_accumulator = 1
+        self.hough_min_dist = 100
+        self.hough_radius_min = 10
+        self.hough_radius_max = 600
+        self.hough_param1 = 50
+        self.hough_param2 = 40
+
+        openKernSize = 20
+        closeKernSize = 5
+        self.close_kernel = np.ones((closeKernSize,closeKernSize), np.uint8)
+        self.open_kernel = np.ones((openKernSize,openKernSize), np.uint8)
+
 class CamVision():
     def __init__(self):
         #define many things. Not sure if this would be better somewhere else
@@ -20,25 +38,24 @@ class CamVision():
         #camera_type should be either 'arm' or 'front'
         self.parser.add_argument('camera_type')
         self.parser.parse_args(namespace=self)
+        self.foo = Foo()
         self.init_funcs(self.camera_type)
         rospy.spin()
 
     def init_funcs(self):
+        self.init_pubsubs()
+        #self.init_vision_constants()
+        self.constants = VisionConstants()
+        self.init_opencv_things()
         if self.camera_type == "arm":
-            self.init_pubsubs()
-            self.init_vision_constants()
             self.init_arm_cam_constants()
-            self.init_cv_things()
         elif self.camera_type == "front":
-            self.init_pubsubs()
-            self.init_vision_constants()
             self.init_front_cam_constants()
-            self.init_cv_things()
         else:
             print "Camera type not recognized..."
             sys.exit()
 
-    def init_cv_things(self):
+    def init_opencv_things(self):
         self.circle_buffer = deque(maxlen=20)
         self.bridge = CvBridge()
     
@@ -48,25 +65,12 @@ class CamVision():
         self.grab_yrange = range(0, 480)
         self.grab_size = 100
 
-    def init_vision_constants(self):
-        self.camera_active = False
-        self.hsv_lower = (26, 75, 46)
-        self.hsv_upper = (58, 255, 255)
-        self.blur_size = 9
-        openKernSize = 20
-        closeKernSize = 5
-        self.close_kernel = np.ones((closeKernSize,closeKernSize), np.uint8)
-        self.open_kernel = np.ones((openKernSize,openKernSize), np.uint8)
-        self.hough_accumulator = 1
-        self.hough_min_dist = 100
-        self.hough_radius_min = 10
-        self.hough_radius_max = 600
-        self.hough_param1 = 50
-        self.hough_param2 = 40
+    def init_front_cam_constants(self):
+        pass
 
     def init_pubsubs(self):
         self.raw_image_sub = rospy.Subscriber(
-                "/camera/image_raw",
+                "/image_raw",
                 Image,
                 self.handle_incoming_image
         )
@@ -93,17 +97,17 @@ class CamVision():
 
     def handle_activation_message(self, message):
         if message.data:
-            self.camera_active = True
+            self.constants.camera_active = True
         else:
-            self.camera_active = False
+            self.constants.camera_active = False
 
     def handle_incoming_image(self, ros_image):
-        if self.camera_active:
+        if self.constants.camera_active:
             image = self.bridge.imgmsg_to_cv2(
                     ros_image,
                     desired_encoding="bgr8"
             )
-            cam_info = self.build_camera_info(image)
+            cam_info = self.foo.build_camera_info(image)
             self.camera_pub.publish(cam_info)
 
     def build_camera_info(self, image):
@@ -144,7 +148,7 @@ class CamVision():
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
-        circled_image, circles = self.hough_circles(masked_image, image)
+        circled_image, circles = self.constant.hough_circles(masked_image, image)
         self.publish_cv_image(circled_image)
         return circled_image, circles
 
@@ -161,16 +165,16 @@ class CamVision():
         #frame = imutils.resize(rgb_image, width=600)
         blurred = cv2.GaussianBlur(
                 rgb_image,
-                (self.blur_size, self.blur_size),
+                (self.constants.blur_size, self.constants.blur_size),
                 0
         )
         hsv = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2HSV)
 
         #use processed image to create a mask and return it
-        mask = cv2.inRange(hsv, self.hsv_lower, self.hsv_upper)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.close_kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.open_kernel)
-        mask = cv2.dilate(mask, self.open_kernel)
+        mask = cv2.inRange(hsv, self.constants.hsv_lower, self.constants.hsv_upper)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.constant.close_kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.constant.open_kernel)
+        mask = cv2.dilate(mask, self.constant.open_kernel)
         return mask
 
     def mask_image(self, image, mask):
@@ -178,7 +182,7 @@ class CamVision():
         masked_image = cv2.bitwise_and(image, image, mask = mask)
         return masked_image
 
-    def hough_circles(self, image, raw_image):
+    def constant.hough_circles(self, image, raw_image):
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
         circled_image = self.draw_circles(raw_image, circles)
@@ -191,12 +195,12 @@ class CamVision():
         circles = cv2.HoughCircles(
                 gray_image,
                 cv2.cv.CV_HOUGH_GRADIENT,
-                self.hough_accumulator,
-                self.hough_min_dist,
-                param1=self.hough_param1,
-                param2=self.hough_param2,
-                minRadius=self.hough_radius_min,
-                maxRadius=self.hough_radius_max
+                self.constant.hough_accumulator,
+                self.constant.hough_min_dist,
+                param1=self.constant.hough_param1,
+                param2=self.constant.hough_param2,
+                minRadius=self.constant.hough_radius_min,
+                maxRadius=self.constant.hough_radius_max
         )
         return circles
 
