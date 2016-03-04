@@ -38,7 +38,6 @@ class CamVision():
         #camera_type should be either 'arm' or 'front'
         self.parser.add_argument('camera_type')
         self.parser.parse_args(namespace=self)
-        self.foo = Foo()
         self.init_funcs(self.camera_type)
         rospy.spin()
 
@@ -108,21 +107,27 @@ class CamVision():
                     ros_image,
                     desired_encoding="bgr8"
             )
-            cam_info = self.foo.build_camera_info(image)
+            cam_info = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
 
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
-        cam_info = camera_info()
-        cam_info.ball_in_grabber = self.ball_positioned(image)
-        return cam_info
+        circles = self.color_circles(image)
+        self.update_circle_averages(circles)
+        cam_info = camera_data()
+        if self.camera_type == "arm":
+            see_ball, ball_centered, ball_size = self.get_ball_info()
+            cam_info.see_ball = see_ball
+            cam_info.ball_centered = ball_centered
+            cam_info.ball_size = ball_size
+            return cam_info
+        elif self.camera_type == "front":
+            pass
 
-    def ball_positioned(self, image):
-        circled_image, circles = self.color_circles(image)
-        ball_ready = self.time_avg_balls(circles)
-        return ball_ready
+    def get_ball_info(self):
+        pass
 
-    def time_avg_balls(self, circles):
+    def time_avg_circles(self, circles):
         see_ball = 0
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
@@ -136,20 +141,16 @@ class CamVision():
             ball_ready = 1
         return ball_ready
 
-    def time_agv_balls_experimental(self, circles):
+    def update_circle_averages(self, circles):
+        #going to write this for one circle for now, will need to extend later
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
-            for circle in circles:
-                closest_ind = self.circle_buffer.index(
-                        min(
-                            self.circle_buffer,
-                            key=lambda x: np.linalg.norm(circle - x)
-                        )
-                )
+            for i, circle in enumerate(circles):
+            self.circles[i].add_circle(circle)
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
-        circled_image, circles = self.constant.hough_circles(masked_image, image)
+        circles = self.constant.hough_circles(masked_image, image)
         self.publish_cv_image(circled_image)
         return circled_image, circles
 
@@ -186,7 +187,6 @@ class CamVision():
     def constant.hough_circles(self, image, raw_image):
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
-        circled_image = self.draw_circles(raw_image, circles)
         return circled_image, circles
 
     def find_circles(self, image):

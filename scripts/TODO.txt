@@ -1,7 +1,3 @@
-test argparse in CV node to handle whether it's an arm camera or a front camera
 use namespacing and remapping so that different vision nodes publish on different topics (arm_vision vs front_vision)
-modify time_avg_balls to do something more intelligent than just checking if x, y and r have been in a range for 10 frames
-    specifically, it should actually average the radii and centers of the circles, most likely
-    probably differentiate between different balls from frame to frame by finding the nearest visible circle? not sure about this one...should get it working with one ball first
-figure out a better way to deal with point-like objects than defining them in many separate files
+finish modifying time_avg_balls to do something more intelligent than just checking if x, y and r have been in a range for 10 frames
 MAKE ODOMETRY DEAL WITH ENCODER ROLLOVER
