@@ -11,6 +11,7 @@ import imutils
 from assignment1.msg import camera_data
 from collections import deque
 import cv2
+from circles_buffer import CirclesBuffer, CirclesStruct
 
 class VisionConstants:
     def __init__(self):
@@ -55,7 +56,7 @@ class CamVision():
             sys.exit()
 
     def init_opencv_things(self):
-        self.circle_buffer = deque(maxlen=20)
+        self.circle_struct = CirclesStruct()
         self.bridge = CvBridge()
     
     def init_arm_cam_constants(self):
@@ -113,6 +114,7 @@ class CamVision():
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
         circles = self.color_circles(image)
+        self.circle_struct.add(circles)
         self.update_circle_averages(circles)
         cam_info = camera_data()
         if self.camera_type == "arm":
@@ -146,7 +148,7 @@ class CamVision():
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for i, circle in enumerate(circles):
-            self.circles[i].add_circle(circle)
+                self.circles[i].add_circle(circle)
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)

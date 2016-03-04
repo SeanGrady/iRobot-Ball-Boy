@@ -10,14 +10,14 @@ class CirclesBuffer(length):
     def add_circle(self, circle):
         self.buff.append(circle)
         self.avg = np.array([sum(i) / len(i) for i in zip(*self.buff)])
-        """
-        x_tot = y_tot = r_tot = 0
-        for circle in self.buff:
-            x_tot += circle[0]
-            y_tot += circle[1]
-            r_tot += circle[2]
-        x_avg = x_tot / self.buff_len
-        y_avg = y_tot / self.buff_len
-        r_avg = r_tot / self.buff_len
-        self.avg = np.array([x_avg, y_avg, r_avg])
-        """
+
+
+class CirclesStruct():
+    def __init__(self):
+        self.circles = [CirclesBuffer()]
+
+    def add_frame_circles(self, circles):
+        pass
+
+    def which_circle_is_it(circle):
+        pass
