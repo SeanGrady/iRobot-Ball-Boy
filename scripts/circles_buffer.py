@@ -1,7 +1,7 @@
 import numpy as np
 from collections import deque
 
-class CirclesBuffer(length):
+class CirclesBuffer():
     def __init__(self, length):
         self.buff_len = length
         self.buff = deque(maxlen = length)
@@ -13,8 +13,9 @@ class CirclesBuffer(length):
 
 
 class CirclesStruct():
-    def __init__(self):
-        self.circles = [CirclesBuffer()]
+    def __init__(self, length):
+        self.length = length
+        self.circles = [CirclesBuffer(length)]
 
     def add_frame_circles(self, circles):
         pass

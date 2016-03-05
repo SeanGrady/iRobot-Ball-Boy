@@ -5,6 +5,7 @@ import math
 import rospy
 import struct
 from robotics_project.srv import *
+from std_msgs.msg import String
 from pprint import pprint
 
 class DriveNode():
@@ -33,6 +34,8 @@ class DriveNode():
 
     def start(self):
         rospy.init_node('drive_node')
+        self.command_service = rospy.Service('requestCommand', requestCommand,
+                                 self.handle_requestCommand)
         self.drive_service = rospy.Service('requestDrive', requestDrive,
                                  self.handle_requestDrive)
         self.turn_service = rospy.Service('turnAngle', turnAngle,
@@ -110,6 +113,10 @@ class DriveNode():
             self.connection.write(self.command_dict['start'])
             self.connection.write(self.command_dict['full'])
             self.connection.write(self.command_dict['beep'])
+
+    def handle_requestCommand(self, request):
+        self.connection.write(self.command_dict[request.data])
+        return []
 
     def handle_requestDrive(self, request):
         vel = request.velocity

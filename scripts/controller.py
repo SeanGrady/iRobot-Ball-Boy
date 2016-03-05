@@ -2,8 +2,9 @@
 
 import rospy
 from robot_camera import RobotCamera
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from assignment1.msg import camera_data
+from assignment1.srv import *
 
 class RobotController():
     def __init__(self):
@@ -23,6 +24,7 @@ class RobotController():
                 camera_data,
                 self.handle_incoming_front_cam_data
         )
+        self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.arm_cam_on = Bool()
         self.arm_cam_on.data = False
         #=================== Environment Variables ============================
@@ -34,9 +36,13 @@ class RobotController():
         self.arm_cam.ball_in_grabber = False
 
     def control_loop(self):
-        #need to map out the robot's states and come up with some kind of
-        #transition scheme
-        print "done the thing"
+        while True:
+            if self.arm_cam.see_ball:
+                rospy.wait_for_service('requestCommand')
+                try:
+                    self.command_req('Beep')
+                except ropsy.ServiceException, e:
+                    print e
 
     def arm_camera_switch(self, value):
         b_value = bool(value)
@@ -46,8 +52,9 @@ class RobotController():
 
     #======================= Callback Functions ===============================
     def handle_incoming_arm_cam_data(self, cam_data):
-        #fill self.arm_cam object accordingly
-        pass
+        self.arm_cam.see_ball = cam_data.see_ball
+        self.arm_cam.ball_centered = cam_data.ball_centered
+        self.arm_cam.ball_size = cam_data.ball_size
 
     def handle_incoming_front_cam_data(self, cam_data):
         #fill self.front_cam object accordingly

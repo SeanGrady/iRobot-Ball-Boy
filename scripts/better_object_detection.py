@@ -56,7 +56,7 @@ class CamVision():
             sys.exit()
 
     def init_opencv_things(self):
-        self.circle_struct = CirclesStruct()
+        self.circle_struct = CirclesStruct(20)
         self.bridge = CvBridge()
     
     def init_arm_cam_constants(self):
@@ -127,7 +127,9 @@ class CamVision():
             pass
 
     def get_ball_info(self):
-        pass
+        if self.circle_struct[0].avg[2] > 5:
+            see_ball = True
+        return see_ball, False, 0
 
     def time_avg_circles(self, circles):
         see_ball = 0
@@ -152,7 +154,7 @@ class CamVision():
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
-        circles = self.constant.hough_circles(masked_image, image)
+        circles = self.constants.hough_circles(masked_image, image)
         self.publish_cv_image(circled_image)
         return circled_image, circles
 
@@ -176,9 +178,9 @@ class CamVision():
 
         #use processed image to create a mask and return it
         mask = cv2.inRange(hsv, self.constants.hsv_lower, self.constants.hsv_upper)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.constant.close_kernel)
-        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.constant.open_kernel)
-        mask = cv2.dilate(mask, self.constant.open_kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.constants.close_kernel)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.constants.open_kernel)
+        mask = cv2.dilate(mask, self.constants.open_kernel)
         return mask
 
     def mask_image(self, image, mask):
@@ -186,7 +188,7 @@ class CamVision():
         masked_image = cv2.bitwise_and(image, image, mask = mask)
         return masked_image
 
-    def constant.hough_circles(self, image, raw_image):
+    def hough_circles(self, image, raw_image):
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
         return circled_image, circles
@@ -198,12 +200,12 @@ class CamVision():
         circles = cv2.HoughCircles(
                 gray_image,
                 cv2.cv.CV_HOUGH_GRADIENT,
-                self.constant.hough_accumulator,
-                self.constant.hough_min_dist,
-                param1=self.constant.hough_param1,
-                param2=self.constant.hough_param2,
-                minRadius=self.constant.hough_radius_min,
-                maxRadius=self.constant.hough_radius_max
+                self.constants.hough_accumulator,
+                self.constants.hough_min_dist,
+                param1=self.constants.hough_param1,
+                param2=self.constants.hough_param2,
+                minRadius=self.constants.hough_radius_min,
+                maxRadius=self.constants.hough_radius_max
         )
         return circles
 
