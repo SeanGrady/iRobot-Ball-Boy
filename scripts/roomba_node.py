@@ -4,7 +4,7 @@ import serial
 import math
 import rospy
 import struct
-from robotics_project.srv import *
+from assignment1.srv import *
 from std_msgs.msg import String
 from pprint import pprint
 
@@ -55,6 +55,7 @@ class DriveNode():
             dx, dy, da = self.calc_pose_deltas(left_dist, right_dist)
             self.update_pose(dx, dy, da)
             pprint(self.pose)
+            self.odom_rate.sleep()
 
     def calc_pose_deltas(self, left_dist, right_dist):
         #THIS IS ONLY VALID FOR SMALL TIMESTEPS! (where cos(delta_ang) ~= 1)

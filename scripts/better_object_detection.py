@@ -15,7 +15,7 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 
 class VisionConstants:
     def __init__(self):
-        self.camera_active = False
+        self.camera_active = True
         self.hsv_lower = (26, 75, 46)
         self.hsv_upper = (58, 255, 255)
         self.blur_size = 9
@@ -38,8 +38,10 @@ class CamVision():
         self.parser = argparse.ArgumentParser()
         #camera_type should be either 'arm' or 'front'
         self.parser.add_argument('camera_type')
-        self.parser.parse_args(namespace=self)
-        self.init_funcs(self.camera_type)
+        self.parser.add_argument('ros_things', nargs = '*')
+        self.args = self.parser.parse_args()
+        self.camera_type = self.args.camera_type
+        self.init_funcs()
         rospy.spin()
 
     def init_funcs(self):
@@ -71,27 +73,32 @@ class CamVision():
 
     def init_pubsubs(self):
         self.raw_image_sub = rospy.Subscriber(
-                "/image_raw",
+                "camera/image_raw",
                 Image,
                 self.handle_incoming_image
         )
         self.camera_activation_sub = rospy.Subscriber(
-                "/activation",
+                "activation",
                 Bool,
                 self.handle_activation_message
         )
         self.image_pub = rospy.Publisher(
-                "/circled_image",
+                "circled_image",
+                Image,
+                queue_size = 10
+        )
+        self.grey_pub = rospy.Publisher(
+                "greyscale/camera/image",
                 Image,
                 queue_size = 10
         )
         self.mask_pub = rospy.Publisher(
-                "/masked_image",
+                "masked_image",
                 Image,
                 queue_size = 10
         )
         self.camera_pub = rospy.Publisher(
-                "/vision_info",
+                "vision_info",
                 camera_data,
                 queue_size = 10
         )
@@ -99,8 +106,10 @@ class CamVision():
     def handle_activation_message(self, message):
         if message.data:
             self.constants.camera_active = True
+            print "turning camera on"
         else:
             self.constants.camera_active = False
+            print "turning camera off"
 
     def handle_incoming_image(self, ros_image):
         if self.constants.camera_active:
@@ -108,27 +117,32 @@ class CamVision():
                     ros_image,
                     desired_encoding="bgr8"
             )
+            grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
+            self.grey_pub.publish(grey_ros_image)
             cam_info = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
 
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
         circles = self.color_circles(image)
-        self.circle_struct.add(circles)
-        self.update_circle_averages(circles)
         cam_info = camera_data()
+        self.circle_struct.add_frame_circles(circles)
+        #self.update_circle_averages(circles)
         if self.camera_type == "arm":
             see_ball, ball_centered, ball_size = self.get_ball_info()
             cam_info.see_ball = see_ball
             cam_info.ball_centered = ball_centered
             cam_info.ball_size = ball_size
-            return cam_info
         elif self.camera_type == "front":
             pass
+        return cam_info
 
     def get_ball_info(self):
-        if self.circle_struct[0].avg[2] > 5:
+        if self.circle_struct.circles_list[0].bin_avg > 0.75:
             see_ball = True
+        else:
+            see_ball = False
         return see_ball, False, 0
 
     def time_avg_circles(self, circles):
@@ -150,13 +164,13 @@ class CamVision():
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for i, circle in enumerate(circles):
-                self.circles[i].add_circle(circle)
+                self.circle_struct[i].add_circle(circle)
 
     def color_circles(self, image):
         masked_image = self.threshold_color(image)
-        circles = self.constants.hough_circles(masked_image, image)
-        self.publish_cv_image(circled_image)
-        return circled_image, circles
+        circles = self.hough_circles(masked_image, image)
+        #self.publish_cv_image(circled_image)
+        return circles
 
     def threshold_color(self, image):
         #threshold image on color and return result to display
@@ -191,14 +205,14 @@ class CamVision():
     def hough_circles(self, image, raw_image):
         #find circles, draw them on the image, and return result to display
         circles = self.find_circles(image)
-        return circled_image, circles
+        return circles
 
     def find_circles(self, image):
         #Assumes unmasked BGR image, accumulator and min_dist will likely
         #require much tuning. Could add min/max radius in px if required.
-        gray_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         circles = cv2.HoughCircles(
-                gray_image,
+                grey_image,
                 cv2.cv.CV_HOUGH_GRADIENT,
                 self.constants.hough_accumulator,
                 self.constants.hough_min_dist,
