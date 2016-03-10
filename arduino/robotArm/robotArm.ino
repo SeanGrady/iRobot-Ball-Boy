@@ -35,6 +35,11 @@ void loop() {
         Serial.println(s.getSensorValues());
       
       }
+      else if( code == 'c')
+      {
+        m.gotoCenter();
+        Serial.println("finished centering");
+      }
       /** 
        *  U: This option followed by 5 digits 
        *  first: motor number
