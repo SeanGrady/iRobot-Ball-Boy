@@ -23,6 +23,7 @@ class Motor {
 		void moveMotor2(int dir,int angle);
 		void moveMotor3(int dir,int angle);
 		void moveMotor4(int dir,int angle);
+    void gotoCenter();
     void stopMotors();
 	
 };

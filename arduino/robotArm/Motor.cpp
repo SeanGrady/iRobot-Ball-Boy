@@ -31,10 +31,10 @@ void Motor::moveMotor1(int dir,int angle) {
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
 		currentSensorVal = sensor.getSensor1Value();
-    if(dir == 1 && currentSensorVal > 630){
+    if(dir == 1 && currentSensorVal > 790){
       break;
     }
-    else if(dir == 0 && currentSensorVal < 375){
+    else if(dir == 0 && currentSensorVal < 420){
       break;
     }
 	}
@@ -63,7 +63,7 @@ void Motor::moveMotor2(int dir,int angle) {
       break;
     }
     else if(dir == 0){
-      if(currentSensorVal < 620){
+      if(currentSensorVal < 689){
         break;
       }
     }
@@ -93,10 +93,10 @@ void Motor::moveMotor3(int dir,int angle) {
       break;
     }
     else */
-    if(dir == 1 && currentSensorVal > 800){
+    if(dir == 1 && currentSensorVal > 736){
       break;
     }
-    else if(dir == 0 && currentSensorVal < 600){
+    else if(dir == 0 && currentSensorVal < 470){
       break;
     }
     //temp++;
@@ -105,19 +105,63 @@ void Motor::moveMotor3(int dir,int angle) {
 }
 
 void Motor::moveMotor4(int dir,int angle) {
-	//int initialSensorVal = sensor.getSensor4Value();
-	// Current calibration -> 1 degree => 5 points in sensor
- 
+	
+  int initialSensorVal = sensor.getSensor4Value();
+  // Current calibration -> 1 degree => 5 points in sensor
+  int changeRequired = 5 * angle;
 
-	if(dir == 0)
-		myMotor4->run(BACKWARD);
-	else if(dir ==1)
-		myMotor4->run(FORWARD);
+  int temp = 0;  
 
-	myMotor4->setSpeed(255);
-	delay(1000);
-	myMotor4->setSpeed(0);
+  if(dir == 0)
+    myMotor4->run(BACKWARD);
+  else if(dir ==1)
+    myMotor4->run(FORWARD);
+
+  myMotor4->setSpeed(150);
+  int currentSensorVal = sensor.getSensor4Value();
+  while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
+    currentSensorVal = sensor.getSensor4Value();
+
+    // center is 500
+
+    //0 goes right
+    
+    if(dir == 0 && currentSensorVal > 600){
+      break;
+    }
+    // 1 goes left
+    else if(dir == 1 && currentSensorVal < 340){
+      break;
+    }
+    
+  }
+  myMotor4->setSpeed(0);
 }
+
+void Motor::gotoCenter()
+{
+  
+  int currentReading = sensor.getSensor4Value();
+  int angle = abs(currentReading-500)/5;
+  
+  if( (currentReading - 493) < -2 ) {
+    // arm on left
+    moveMotor4(0, angle);
+    
+  } else if( (currentReading - 493) > 2) {
+    // arm on right
+    moveMotor4(1, angle);
+    
+  } else {
+    //already on middle
+  }
+
+  //while( (currentReading - 500) < 2 || (currentReading - 500) > 2) {
+    
+  
+  
+}
+
 
 void Motor::stopMotors(){
   myMotor1->setSpeed(0);
