@@ -45,6 +45,7 @@ class CamVision():
         rospy.spin()
 
     def init_funcs(self):
+        self.init_debug_consts()
         self.init_pubsubs()
         #self.init_vision_constants()
         self.constants = VisionConstants()
@@ -56,6 +57,9 @@ class CamVision():
         else:
             print "Camera type not recognized..."
             sys.exit()
+
+    def init_debug_consts(self):
+        self.show_circles = True
 
     def init_opencv_things(self):
         self.circle_struct = CirclesStruct(20)
@@ -120,8 +124,11 @@ class CamVision():
             grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
             self.grey_pub.publish(grey_ros_image)
-            cam_info = self.build_camera_info(image)
+            cam_info, avg_circles = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
+            if self.show_circles == True:
+                circled_image = self.draw_circles(image, avg_circles)
+                self.publish_cv_image(circled_image, self.image_pub)
 
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
@@ -130,20 +137,25 @@ class CamVision():
         self.circle_struct.add_frame_circles(circles)
         #self.update_circle_averages(circles)
         if self.camera_type == "arm":
-            see_ball, ball_centered, ball_size = self.get_ball_info()
+            see_ball, ball_pos, ball_size = self.get_ball_info()
             cam_info.see_ball = see_ball
             cam_info.ball_centered = ball_centered
             cam_info.ball_size = ball_size
         elif self.camera_type == "front":
             pass
-        return cam_info
+        return cam_info, avg_circles
 
     def get_ball_info(self):
         if self.circle_struct.circles_list[0].bin_avg > 0.75:
             see_ball = True
+            ball_xyr = self.circle_struct.circles_list[0].avg
+            ball_pos = ball_xyr[0:2]
+            ball_size = ball_xyr[2]
         else:
             see_ball = False
-        return see_ball, False, 0
+            ball_pos = np.array([0,0])
+            ball_size = 0
+        return see_ball, ball_pos, ball_size
 
     def time_avg_circles(self, circles):
         see_ball = 0
@@ -242,9 +254,9 @@ class CamVision():
         ros_image = self.bridge.cv2_to_imgmsg(mask_image, "bgr8")
         self.mask_pub.publish(ros_image)
 
-    def publish_cv_image(self, cv_image):
+    def publish_cv_image(self, cv_image, publisher):
         ros_image = self.bridge.cv2_to_imgmsg(cv_image, "bgr8")
-        self.image_pub.publish(ros_image)
+        publisher.publish(ros_image)
 
     def test_cv_func(self, function):
         #apply a function that returns a displayable image to a video stream
