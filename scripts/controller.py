@@ -6,6 +6,7 @@ from std_msgs.msg import Bool, String
 from assignment1.msg import camera_data, roomba_odom
 from assignment1.srv import *
 import math as m
+import numpy as np
 
 class RobotController():
     def __init__(self):
@@ -56,6 +57,8 @@ class RobotController():
         self.beep_robot()
         self.front_cam_center_ball()
         self.approach_ball(100)
+        self.front_cam_center_ball()
+        self.goto_waypoint((0,0))
 
     def camera_switch(self, camera, value):
         b_value = bool(value)
@@ -161,6 +164,21 @@ class RobotController():
         while not self.front_cam.see_ball:
             #look for balls
         """
+
+    def goto_waypoint(self, waypoint):
+        print "pathing to waypoint ", waypoint
+        #tolerance is in mm
+        tolerance = 300.
+        waypoint = np.array(waypoint)
+        self.orient_toward_waypoint(waypoint)
+        current_pos = np.array(self.odom_estimate.pos_x,
+                self.odom_estimate.pos_y)
+        while np.linalg.norm(waypoint - current_pos) > tolerance:
+            self.drive_robot(100, 0)
+            rospy.sleep(.1)
+            current_pos = np.array(self.odom_estimate.pos_x,
+                    self.odom_estimate.pos_y)
+        print "Arrived at waypoint"
 
     def approach_ball(self, r_thresh):
         self.camera_switch('front', True)
