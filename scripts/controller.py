@@ -3,8 +3,9 @@
 import rospy
 from robot_camera import RobotCamera
 from std_msgs.msg import Bool, String
-from assignment1.msg import camera_data
+from assignment1.msg import camera_data, roomba_odom
 from assignment1.srv import *
+import math as m
 
 class RobotController():
     def __init__(self):
@@ -24,63 +25,90 @@ class RobotController():
                 camera_data,
                 self.handle_incoming_front_cam_data
         )
+        self.odom_sub = rospy.Subscriber(
+                "/base/odometry",
+                roomba_odom,
+                self.handle_incoming_odometry
+        )
+        self.turn_req = rospy.ServiceProxy('turnAngle', turnAngle)
         self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.drive_request = rospy.ServiceProxy('requestDrive', requestDrive)
         self.arm_cam_on = Bool()
+        self.front_cam_on = Bool()
         self.arm_cam_on.data = False
+        self.front_cam_on.data = False
         #=================== Environment Variables ============================
         self.mapping_fix = False
+        self.odom_estimate = roomba_odom()
         self.balls_collected = 0
-        self.forward_cam = RobotCamera()
+        self.front_cam = RobotCamera()
         self.arm_cam = RobotCamera()
-        #this is bad, should use like inheritance or some shit
+        #this is bad, should use like inheritance or some nonsense
         self.arm_cam.ball_in_grabber = False
 
     def control_loop(self):
         rospy.sleep(3)
-        self.arm_cam_on = True
-        print "cam on"
-        rospy.sleep(1)
-        self.arm_cam_activate_pub.publish(self.arm_cam_on)
-        while True:
-            if self.arm_cam.see_ball:
-                rospy.wait_for_service('requestCommand')
-                try:
-                    self.command_req('beep')
-                except ropsy.ServiceException, e:
-                    print e
-                break
-            else:
-                self.get_object_in_view('ball')
+        self.camera_switch("arm", 0)
+        self.camera_switch("front", 1)
+        print "Front cam on"
+        #self.drive_until_ball()
+        self.get_object_in_view('ball')
+        self.beep_robot()
+        self.front_cam_center_ball()
+        self.approach_ball(100)
 
-    def arm_camera_switch(self, value):
+    def camera_switch(self, camera, value):
         b_value = bool(value)
-        if self.arm_cam_on.data != b_value:
+        if camera == "arm" and self.arm_cam_on.data != b_value:
             self.arm_cam_on.data == b_value
             self.arm_cam_activate_pub.publish(self.arm_cam_on)
+        elif camera == "front" and self.front_cam_on.data != b_value:
+            self.front_cam_on.data == b_value
+            self.front_cam_activate_pub.publish(self.front_cam_on)
 
     #======================= Callback Functions ===============================
     def handle_incoming_arm_cam_data(self, cam_data):
         if self.arm_cam.see_ball != cam_data.see_ball:
             print "setting arm cam info: ", cam_data.see_ball
             self.arm_cam.see_ball = cam_data.see_ball
-        #self.arm_cam.ball_centered = cam_data.ball_centered
-        #self.arm_cam.ball_size = cam_data.ball_size
+            self.arm_cam.ball_pos = cam_data.ball_pos
+            self.arm_cam.ball_size = cam_data.ball_size
 
     def handle_incoming_front_cam_data(self, cam_data):
-        #fill self.front_cam object accordingly
-        pass
+        if self.front_cam.see_ball != cam_data.see_ball:
+            print "setting front cam info: ", cam_data.see_ball
+            self.front_cam.see_ball = cam_data.see_ball
+            self.front_cam.ball_pos = cam_data.ball_pos
+            self.front_cam.ball_size = cam_data.ball_size
+
+    def handle_incoming_odometry(self, odom_message):
+        self.odom_estimate = odom_message
 
     #======================= State Functions ==================================
+    def drive_until_ball(self):
+        self.camera_switch("arm",0)
+        self.camera_switch("front", 1)
+        while not self.front_cam.see_ball:
+            self.drive_robot(100, 0)
+            rospy.sleep(.1)
+        self.drive_robot(0, 0)
+
+    def beep_robot(self):
+        rospy.wait_for_service('requestCommand')
+        try:
+            self.command_req('beep')
+        except ropsy.ServiceException, e:
+            print e
+
     def get_object_in_view(self, obj):
         if obj == "ball":
-            while not self.arm_cam.see_ball:
-                self.drive_robot(0, 40)
+            self.drive_robot(0, 40)
+            while not self.front_cam.see_ball:
+                rospy.sleep(.01)
         elif obj == "bucket":
-            while not self.arm_cam.see_bucket:
-                self.drive_robot(0, 40)
-                rospy.sleep(0.1)
-        rospy.sleep(0.5)
+            self.drive_robot(0, 40)
+            while not self.front_cam.see_bucket:
+                rospy.sleep(0.01)
         print obj + " is in view"
         self.drive_robot(0, 0)
 
@@ -91,59 +119,73 @@ class RobotController():
         except rospy.ServiceException, e:
             print e
 
-    def center_object(self, obj):
-        offset = self.objectPose_dict[obj] - 320
-        while abs(offset) > 20:
-            offset = self.objectPose_dict[obj] - 320
-            #turn_rate = max([abs(offset)/(320/50), 25])
-            turn_rate = 30
+    def front_cam_center_ball(self):
+        offset = 320 - self.front_cam.ball_pos[0]
+        while offset > 20:
+            turn_rate = max(min(offset, 50), 20)
             self.drive_robot(0, turn_rate)
+            offset = 320 - self.front_cam.ball_pos[0]
+            rospy.sleep(0.01)
         print "centered ball, sending stop command"
         self.drive_robot(0, 0)
 
     def recover_map_fix(self):
-        self.arm_camera_switch(0)
+        self.camera_switch("arm",0)
 
     def locate_home(self):
-        self.arm_camera_switch(0)
+        self.camera_switch("arm",0)
+    
+    def return_home(self):
+
+    def orient_toward_waypoint(self, waypoint):
+        target_x = waypoint[0]
+        target_y = waypoint[1]
+        current_x = self.odom_estimate.pos_x
+        current_y = self.odom_estimate.pos_y
+        current_ang = self.odom_estimate.angle
+        slope = (target_y - current_y) / (target_x - current-x)
+        angle = m.atan(slope)
+        self.turn_req(angle)
 
     def search_ball(self):
-        self.arm_camera_switch(0)
+        self.camera_switch("arm",0)
+        self.camera_switch("front", 1)
         """
-        while not self.forward_cam.see_ball:
+        while not self.front_cam.see_ball:
             #look for balls
         """
 
     def search_bucket(self):
-        self.arm_camera_switch(0)
+        self.camera_switch("arm",0)
         """
-        while not self.forward_cam.see_ball:
+        while not self.front_cam.see_ball:
             #look for balls
         """
 
-    def approach_ball(self):
-        self.arm_camera_switch(1)
-        while self.forward_cam.see_ball and not self.arm_cam.see_ball:
-            if self.forward_cam.ball_centered:
-                #drive forward
-                pass
+    def approach_ball(self, r_thresh):
+        self.camera_switch('front', True)
+        self.camera_switch('arm', False)
+        while self.front_cam.see_ball:
+            if self.front_cam.ball_size < r_thresh:
+                self.drive_robot(50, 0)
+                rospy.sleep(0.1)
             else:
-                #center ball
-                pass
+                self.drive_robot(0,0)
+                break
 
     def pickup_ball(self):
         #this is going to be a hard one...
-        self.arm_camera_switch(1)
+        self.camera_switch("arm",1)
         """
         while self.arm_cam.see_ball and not self.arm_cam.ball_in_grabber:
         """
 
     def return_bucket(self):
-        self.arm_camera_switch(0)
+        self.camera_switch("arm",0)
         """
-        while not self.forward_cam.see_bucket:
+        while not self.front_cam.see_bucket:
             #look for bucket (using map to go back to home?)
-        while self.forward_cam.see_bucket:
+        while self.front_cam.see_bucket:
             #center bucket
             #move toward bucket
         """

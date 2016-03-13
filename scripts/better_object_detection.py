@@ -142,7 +142,10 @@ class CamVision():
             cam_info.ball_centered = ball_centered
             cam_info.ball_size = ball_size
         elif self.camera_type == "front":
-            pass
+            see_ball, ball_pos, ball_size = self.get_ball_info()
+            cam_info.see_ball = see_ball
+            cam_info.ball_centered = ball_centered
+            cam_info.ball_size = ball_size
         return cam_info, avg_circles
 
     def get_ball_info(self):

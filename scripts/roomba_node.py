@@ -5,6 +5,7 @@ import math
 import rospy
 import struct
 from assignment1.srv import *
+from assignment1.msg import roomba_odom
 from std_msgs.msg import String
 from pprint import pprint
 
@@ -26,11 +27,6 @@ class DriveNode():
             'dock':self.make_raw_command('143'),
             'reset':self.make_raw_command('7')
         }
-        self.pose = {
-                'angle':0.,
-                'x':0.,
-                'y':0.,
-        }
 
     def start(self):
         rospy.init_node('drive_node')
@@ -44,17 +40,28 @@ class DriveNode():
                                  self.handle_driveDist)
         self.angle_service = rospy.Service('requestAngle', requestAngle,
                                            self.handle_requestAngle)
+        self.odom_pub = rospy.Publisher(
+                'base/odometry',
+                roomba_odom,
+                queue_size = 10
+        )
+        self.pose = roomba_odom()
         self.connect_robot()
         self.encoder_count_reset()
-        rospy.spin()
+        self.odom_loop()
 
     def odom_loop(self):
         self.odom_rate = rospy.rate(10)
         while not rospy.is_shutdown():
             left_dist, right_dist = self.get_encoder_diffs()
+            if (left_dist > self.encoder_max / 10. or
+                    right_dist > self.encoder_max / 10):
+                print "ENCODER ROLLOVER DETECTED!"
+            self.encoder_count_reset()
             dx, dy, da = self.calc_pose_deltas(left_dist, right_dist)
             self.update_pose(dx, dy, da)
             pprint(self.pose)
+            self.odom_pub.publish(self.pose)
             self.odom_rate.sleep()
 
     def calc_pose_deltas(self, left_dist, right_dist):
@@ -66,9 +73,9 @@ class DriveNode():
         return delta_x, delta_y, delta_angle
 
     def update_pose(self, dx, dy, da):
-        self.pose['angle'] += da
-        self.pose['x'] += dx
-        self.pose['y'] += dy
+        self.pose.pos_x += dx
+        self.pose.pos_y += dy
+        self.pose.angle += da
 
     def get_encoder_diffs():
         left_counts, right_counts = self.get_encoder_counts()
