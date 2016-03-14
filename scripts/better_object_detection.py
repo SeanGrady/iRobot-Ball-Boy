@@ -16,15 +16,15 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.hsv_lower = (26, 75, 46)
-        self.hsv_upper = (58, 255, 255)
+        self.hsv_lower = (40, 106, 66)
+        self.hsv_upper = (67, 255, 255)
         self.blur_size = 9
         self.hough_accumulator = 1
         self.hough_min_dist = 100
         self.hough_radius_min = 10
         self.hough_radius_max = 600
-        self.hough_param1 = 50
-        self.hough_param2 = 40
+        self.hough_param1 = 40
+        self.hough_param2 = 30
 
         openKernSize = 20
         closeKernSize = 5
@@ -59,10 +59,11 @@ class CamVision():
             sys.exit()
 
     def init_debug_consts(self):
-        self.show_circles = True
+        self.show_circles = False
+        self.show_avg_circles = True
 
     def init_opencv_things(self):
-        self.circle_struct = CirclesStruct(20)
+        self.circle_struct = CirclesStruct(10)
         self.bridge = CvBridge()
     
     def init_arm_cam_constants(self):
@@ -108,12 +109,11 @@ class CamVision():
         )
 
     def handle_activation_message(self, message):
+        print "activation message ", self.camera_type, message
         if message.data:
             self.constants.camera_active = True
-            print "turning camera on"
         else:
             self.constants.camera_active = False
-            print "turning camera off"
 
     def handle_incoming_image(self, ros_image):
         if self.constants.camera_active:
@@ -121,13 +121,18 @@ class CamVision():
                     ros_image,
                     desired_encoding="bgr8"
             )
+            if self.camera_type == "front":
+                image = cv2.flip(image, 0)
             grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
             self.grey_pub.publish(grey_ros_image)
-            cam_info, avg_circles = self.build_camera_info(image)
+            cam_info, avg_circles, circles = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
             if self.show_circles == True:
-                circled_image = self.draw_circles(image, avg_circles)
+                circled_image = self.draw_circles(image, circles)
+                self.publish_cv_image(circled_image, self.image_pub)
+            if self.show_avg_circles == True:
+                circled_image = self.draw_circles(image, np.array([avg_circles]))
                 self.publish_cv_image(circled_image, self.image_pub)
 
     def build_camera_info(self, image):
@@ -135,18 +140,19 @@ class CamVision():
         circles = self.color_circles(image)
         cam_info = camera_data()
         self.circle_struct.add_frame_circles(circles)
+        avg_circles = self.circle_struct.circles_list[0].avg
         #self.update_circle_averages(circles)
         if self.camera_type == "arm":
             see_ball, ball_pos, ball_size = self.get_ball_info()
             cam_info.see_ball = see_ball
-            cam_info.ball_centered = ball_centered
+            cam_info.ball_pos = ball_pos
             cam_info.ball_size = ball_size
         elif self.camera_type == "front":
             see_ball, ball_pos, ball_size = self.get_ball_info()
             cam_info.see_ball = see_ball
-            cam_info.ball_centered = ball_centered
+            cam_info.ball_pos = ball_pos
             cam_info.ball_size = ball_size
-        return cam_info, avg_circles
+        return cam_info, avg_circles, circles
 
     def get_ball_info(self):
         if self.circle_struct.circles_list[0].bin_avg > 0.75:
@@ -241,7 +247,8 @@ class CamVision():
     def draw_circles(self, image, circles):
         #draw all the detected circles, and a box at their centers
         if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
+            #circles = np.round(circles[0, :]).astype("int")
+            circles = np.round(circles).astype("int")
             for x, y, r in circles:
                 cv2.circle(image, (x, y), r, (0, 0, 255), 4)
                 cv2.rectangle(

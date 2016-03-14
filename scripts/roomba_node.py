@@ -51,7 +51,7 @@ class DriveNode():
         self.odom_loop()
 
     def odom_loop(self):
-        self.odom_rate = rospy.rate(10)
+        self.odom_rate = rospy.Rate(10)
         while not rospy.is_shutdown():
             left_dist, right_dist = self.get_encoder_diffs()
             if (left_dist > self.encoder_max / 10. or
@@ -60,7 +60,7 @@ class DriveNode():
             self.encoder_count_reset()
             dx, dy, da = self.calc_pose_deltas(left_dist, right_dist)
             self.update_pose(dx, dy, da)
-            pprint(self.pose)
+            #pprint(self.pose)
             self.odom_pub.publish(self.pose)
             self.odom_rate.sleep()
 
@@ -68,8 +68,8 @@ class DriveNode():
         #THIS IS ONLY VALID FOR SMALL TIMESTEPS! (where cos(delta_ang) ~= 1)
         center_dist = (left_dist + right_dist) / 2.
         delta_angle = (right_dist - left_dist) / 2.
-        delta_x = center_dist * math.cos(self.pose['angle'])
-        delta_y = center_dist * math.sin(self.pose['angle'])
+        delta_x = center_dist * math.cos(self.pose.angle)
+        delta_y = center_dist * math.sin(self.pose.angle)
         return delta_x, delta_y, delta_angle
 
     def update_pose(self, dx, dy, da):
@@ -77,7 +77,7 @@ class DriveNode():
         self.pose.pos_y += dy
         self.pose.angle += da
 
-    def get_encoder_diffs():
+    def get_encoder_diffs(self):
         left_counts, right_counts = self.get_encoder_counts()
         left_diff = left_counts - self.left_total
         right_diff = right_counts - self.right_total

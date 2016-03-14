@@ -16,8 +16,10 @@ class CirclesBuffer():
         self.bin_avg = sum(self.circle_bin) / float(self.buff_len)
 
     def add_empty(self):
+        """
         if len(self.buff) > 0:
             self.buff.popleft()
+        """
         self.circle_bin.append(0)
         self.bin_avg = sum(self.circle_bin) / float(self.buff_len)
 

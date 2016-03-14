@@ -16,6 +16,11 @@ class RobotController():
                 Bool,
                 queue_size = 10
         )
+        self.front_cam_activate_pub = rospy.Publisher(
+                "/front_cam/activation",
+                Bool,
+                queue_size = 10
+        )
         self.arm_cam_sub = rospy.Subscriber(
                 "/arm_cam/vision_info",
                 camera_data,
@@ -38,6 +43,7 @@ class RobotController():
         self.front_cam_on = Bool()
         self.arm_cam_on.data = False
         self.front_cam_on.data = False
+        self.seek_speed = 20
         #=================== Environment Variables ============================
         self.mapping_fix = False
         self.odom_estimate = roomba_odom()
@@ -48,25 +54,33 @@ class RobotController():
         self.arm_cam.ball_in_grabber = False
 
     def control_loop(self):
+        print "entering control loop"
         rospy.sleep(3)
         self.camera_switch("arm", 0)
         self.camera_switch("front", 1)
         print "Front cam on"
-        #self.drive_until_ball()
-        self.get_object_in_view('ball')
+        print "beeping robot"
         self.beep_robot()
+        print "driving to ball"
+        self.drive_until_ball()
+        print "beeping robot"
+        self.beep_robot()
+        print "centering ball"
         self.front_cam_center_ball()
+        print "approaching ball"
         self.approach_ball(100)
+        print "centering ball again"
         self.front_cam_center_ball()
+        print "returning home"
         self.goto_waypoint((0,0))
 
     def camera_switch(self, camera, value):
         b_value = bool(value)
         if camera == "arm" and self.arm_cam_on.data != b_value:
-            self.arm_cam_on.data == b_value
+            self.arm_cam_on.data = b_value
             self.arm_cam_activate_pub.publish(self.arm_cam_on)
         elif camera == "front" and self.front_cam_on.data != b_value:
-            self.front_cam_on.data == b_value
+            self.front_cam_on.data = b_value
             self.front_cam_activate_pub.publish(self.front_cam_on)
 
     #======================= Callback Functions ===============================
@@ -105,11 +119,11 @@ class RobotController():
 
     def get_object_in_view(self, obj):
         if obj == "ball":
-            self.drive_robot(0, 40)
+            self.drive_robot(0, self.seek_speed)
             while not self.front_cam.see_ball:
                 rospy.sleep(.01)
         elif obj == "bucket":
-            self.drive_robot(0, 40)
+            self.drive_robot(0, self.seek_speed)
             while not self.front_cam.see_bucket:
                 rospy.sleep(0.01)
         print obj + " is in view"
@@ -123,12 +137,18 @@ class RobotController():
             print e
 
     def front_cam_center_ball(self):
+        self.camera_switch("arm", 0)
+        self.camera_switch("front", 1)
         offset = 320 - self.front_cam.ball_pos[0]
         while offset > 20:
-            turn_rate = max(min(offset, 50), 20)
+            print "offset", offset
+            #turn_rate = max(min(offset, 50), 20)
+            turn_rate = self.seek_speed 
             self.drive_robot(0, turn_rate)
+            rospy.sleep(0.10)
+            self.drive_robot(0, 0)
+            rospy.sleep(1.)
             offset = 320 - self.front_cam.ball_pos[0]
-            rospy.sleep(0.01)
         print "centered ball, sending stop command"
         self.drive_robot(0, 0)
 
@@ -139,6 +159,7 @@ class RobotController():
         self.camera_switch("arm",0)
     
     def return_home(self):
+        pass
 
     def orient_toward_waypoint(self, waypoint):
         target_x = waypoint[0]
@@ -146,7 +167,7 @@ class RobotController():
         current_x = self.odom_estimate.pos_x
         current_y = self.odom_estimate.pos_y
         current_ang = self.odom_estimate.angle
-        slope = (target_y - current_y) / (target_x - current-x)
+        slope = (target_y - current_y) / (target_x - current_x)
         angle = m.atan(slope)
         self.turn_req(angle)
 
@@ -171,8 +192,8 @@ class RobotController():
         tolerance = 300.
         waypoint = np.array(waypoint)
         self.orient_toward_waypoint(waypoint)
-        current_pos = np.array(self.odom_estimate.pos_x,
-                self.odom_estimate.pos_y)
+        print self.odom_estimate
+        current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
         while np.linalg.norm(waypoint - current_pos) > tolerance:
             self.drive_robot(100, 0)
             rospy.sleep(.1)

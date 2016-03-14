@@ -161,7 +161,7 @@ class ArmController():
             rospy.sleep(10)
             self.arm_max('drop')
             rospy.sleep(2)
-            self.control_loop()
+            #self.control_loop()
             #self.assume_pose()
 
 if __name__=="__main__":
