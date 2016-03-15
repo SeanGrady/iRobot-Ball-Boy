@@ -1,0 +1,14 @@
+<launch>
+    <env name = "GSCAM_CONFIG" value = "v4l2src device=/dev/video2 !
+        video/x-raw-rgb,framerate-25/1 ! ffmpegcolorspace" />
+
+    <group ns="arm_cam">
+        <node pkg="gscam" name="web_cam" type="gscam">
+            <param name = "camera_name" value = "web_cam" />
+        </node>
+
+        <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="arm"/>
+
+        <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
+    </group>
+</launch>

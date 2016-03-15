@@ -1,4 +1,3 @@
-
 class grab_ball():
 	def __init__(self):
 		self.initiate_pickup():

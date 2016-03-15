@@ -13,6 +13,7 @@ from copy import deepcopy
 class RobotController():
     def __init__(self):
         rospy.init_node("robot_controller")
+        self.grab_request("requestGrab", requestGrab)
         self.arm_cam_activate_pub = rospy.Publisher(
                 "/arm_cam/activation",
                 Bool,
@@ -43,6 +44,11 @@ class RobotController():
                 ultrasoundData,
                 self.handle_incoming_ultrasound
         )
+        self.arm_mode_pub = rospy.Publisher(
+                "/arm_node/mode",
+                Bool,
+                queue_size = 10
+        )
         self.turn_req = rospy.ServiceProxy('turnAngle', turnAngle)
         self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.drive_request = rospy.ServiceProxy('requestDrive', requestDrive)
@@ -72,15 +78,19 @@ class RobotController():
         print "beeping robot"
         self.beep_robot()
         print "driving to ball"
-        self.drive_until_ball()
-        print "beeping robot"
+        self.navigate_randomly()
+        print "Ball found, beeping robot"
         self.beep_robot()
         print "centering ball"
         self.front_cam_center_ball()
         print "approaching ball"
         self.approach_ball(100)
+        """
         print "centering ball again"
         self.front_cam_center_ball()
+        """
+        print "grabbing ball"
+        self.grab_close_ball()
         print "returning home"
         self.goto_waypoint((0,0))
 
@@ -122,6 +132,13 @@ class RobotController():
         self.odom_estimate = odom_message
 
     #======================= State Functions ==================================
+    def grab_close_ball(self):
+        mode = Bool()
+        mode.data = True
+        self.arm_mode_pub.publish(mode)
+        req = requestGrab()
+        self.grab_request(req)
+
     def drive_until_ball(self):
         self.camera_switch("arm",0)
         self.camera_switch("front", 1)
@@ -308,10 +325,10 @@ class RobotController():
             rospy.sleep(random.random() * maxTime)
             self.driveRobot(0,0)
 
-    def navigateRandomly(self):
+    def navigate_randomly(self):
             # Initial state , move forward for a random time first
             # Move randomly till the camera detects a ball
-            while self.front_cam.see_ball not True:
+            while not self.front_cam.see_ball:
                     # Sleep for a random time between 0s to 4s
                     driveRobotForwardRandom(4);
                     rotateLeft90DegreesRandom(3);

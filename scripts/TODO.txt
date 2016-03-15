@@ -5,3 +5,8 @@ sort out state machine business
 
 ----
 angles in motor command are relative to current position and are in 'degrees'
+m1 (shoulder): 0 = down, 1=up
+m2 (elbow): 0 = down, 1 = up
+m3 (claw): 1 = close, 0 = open
+m4 (base): 0 = right, 1 = left
+

@@ -4,7 +4,7 @@ import serial
 import math
 import rospy
 import struct
-from assignment1.srv import armPose
+from assignment1.srv import *
 from assignment1.msg import grabBall, ultrasoundData, camera_data
 
 class collisionDetection():
@@ -45,6 +45,7 @@ class collisionDetection():
 
 class ArmController():
     def __init__(self):
+        self.avoid_collisions = True
         self.arm_cam = camera_data()
         self.connection = None
         self.prev_grab = 0
@@ -60,10 +61,15 @@ class ArmController():
                 camera_data,
                 self.handle_incoming_arm_cam_data
         )
-        self.grab_ball_sub = rospy.Subscriber(
-                "/Ball_Detector/ball_positioned",
-                grabBall,
-                self.handle_incoming_ball
+        self.grab_service = rospy.Service(
+                "requestGrab",
+                requestGrab,
+                self.handle_grab_toggle
+        )
+        self.arm_mode_sub = rospy.Subscriber(
+                "/arm_node/mode",
+                Bool,
+                self.handle_incoming_mode_switch
         )
         self.collision_data_pub = rospy.Publisher(
                 "/Sensors/Ultrasound",
@@ -97,6 +103,17 @@ class ArmController():
         self.connect_robot()
         self.collision_detector = collisionDetection(self.connection)
         rospy.spin()
+    
+    def handle_grab_toggle(self, bool_msg):
+        self.locate_and_grab_ball()
+        return []
+
+    def handle_incoming_mode_switch(self, bool_msg):
+        if bool_msg.data:
+            self.avoid_collisions = False
+        else:
+            self.avoid_collisions = True
+            self.collision_avoidance_loop()
 
     def handle_incoming_arm_cam_data(self, cam_data):
         self.arm_cam = cam_data
@@ -107,6 +124,35 @@ class ArmController():
             self.collision_data_pub.publish(collision_data)
             rospy.sleep(.75)
 
+    def locate_and_grab_ball(self):
+        self.arm_max('top')
+        self.lower_until_ball()
+        offset = self.get_ball_x_offset()
+        while offset > 30:
+            amt = 10
+            d = int(offset > 0)
+            command = 'm4'+str(d)+str(amt)
+            print "moving arm to ball with command ", command
+            self.connection.write(command)
+            rospy.sleep(0.1)
+            offset = self.get_ball_x_offset()
+        self.pickup_ball()
+
+    def pickup_ball(self):
+        self.arm_max('bot')
+        self.arm_max('grab')
+        self.arm_max('top')
+
+    def get_ball_x_offset(self):
+        ball_x = self.arm_cam.ball_pos[0]
+        offset = ball_x - 320
+        return offset
+        
+    def lower_until_ball(self):
+        self.arm_max('bot')
+        while not self.arm_cam.see_ball:
+            rospy.sleep(.1)
+
     def update_collision_data(self):
         self.collision_detector.get_sensor_readings()
         collision_data = ultrasoundData()
@@ -114,9 +160,6 @@ class ArmController():
         collision_data.sensor_left = self.collision_detector.readingLeft
         collision_data.sensor_right = self.collision_detector.readingRight
         return collision_data
-
-    def handle_incoming_ball(self, grab_ball):
-        self.grab = grab_ball.in_position
 
     def grab_or_drop(self):
         if self.grab and not self.prev_grab:
@@ -154,7 +197,6 @@ class ArmController():
         return "Pose assumed"
 
     def arm_max(self,command):
-	
 	if(command == 'bot'):
 		#self.connection.write('m30100')
 		self.connection.write('m20100')
