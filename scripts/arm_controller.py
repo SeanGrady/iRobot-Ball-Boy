@@ -5,7 +5,43 @@ import math
 import rospy
 import struct
 from assignment1.srv import armPose
-from assignment1.msg import grabBall
+from assignment1.msg import grabBall, ultrasoundData
+
+class collisionDetection():
+	def __init__(self, connection):
+		# Initialize all sensor readings to 0
+		self.readingFront = 0
+		self.readingLeft = 0
+		self.readingRight = 0
+		self.connection = connection
+
+	# This function gets the sensor readings for all sensors
+	def getSensorReadings(self):
+		# connect to Arduino
+		self.connection.write('u1')
+		self.readingFront = int(connection.readline())
+
+		self.connection.write('u2')
+		self.readingLeft = int(connection.readline())
+
+		self.connection.write('u3')
+		self.readingRight = int(connection.readline())
+
+	# This returns sensor reading only for a given sensor
+	def getSensorReading(self, sensor):
+		if sensor == 1:
+			self.connection.write('u1')
+			self.readingFront = int(connection.readline())
+
+		elif sensor == 2:
+			self.connection.write('u2')
+			self.readingLeft = int(connection.readline())
+
+		elif sensor == 3:
+			self.connection.write('u3')
+			self.readingRight = int(connection.readline())
+		else:
+			print "ERROR : wrong sensor id passed"
 
 class ArmController():
     def __init__(self):
@@ -14,6 +50,7 @@ class ArmController():
         #self.arm_struct = struct.Struct('')
         self.port = '/dev/ttyACM0'
         self.ang_len = 2
+        self.avoid_collisions = False
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
                                           self.handle_pose_req)
@@ -21,6 +58,11 @@ class ArmController():
                 "/Ball_Detector/ball_positioned",
                 grabBall,
                 self.handle_incoming_ball
+        )
+        self.collision_data_pub = rospy.Publisher(
+                "/Sensors/Ultrasound",
+                ultrasoundData,
+                queue_size = 10
         )
         self.arm_state = {
                 "M1":0,
@@ -47,7 +89,22 @@ class ArmController():
         }
         #self.update_joint_states()
         self.connect_robot()
+        self.collision_detector = collisionDetection(self.connection)
         rospy.spin()
+
+    def collision_avoidance_loop(self):
+        while self.avoid_collisions:
+            collision_data = self.update_collision_data()
+            self.collision_data_pub.publish(collision_data)
+            rospy.sleep(.75)
+
+    def update_collision_data(self):
+        self.collision_detector.get_sensor_readings()
+        collision_data = ultrasoundData()
+        collision_data.sensor_front = self.collision_detector.readingFront
+        collision_data.sensor_left = self.collision_detector.readingLeft
+        collision_data.sensor_right = self.collision_detector.readingRight
+        return collision_data
 
     def handle_incoming_ball(self, grab_ball):
         self.grab = grab_ball.in_position

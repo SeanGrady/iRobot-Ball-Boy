@@ -51,6 +51,7 @@ find_package(catkin REQUIRED COMPONENTS
    grabBall.msg
    camera_data.msg
    roomba_odom.msg
+   ultrasoundData.msg
  )
 
 ## Generate services in the 'srv' folder

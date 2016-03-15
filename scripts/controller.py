@@ -3,10 +3,11 @@
 import rospy
 from robot_camera import RobotCamera
 from std_msgs.msg import Bool, String
-from assignment1.msg import camera_data, roomba_odom
+from assignment1.msg import camera_data, roomba_odom, ultrasoundData
 from assignment1.srv import *
 import math as m
 import numpy as np
+from copy import deepcopy
 
 class RobotController():
     def __init__(self):
@@ -36,6 +37,11 @@ class RobotController():
                 roomba_odom,
                 self.handle_incoming_odometry
         )
+        self.ultrasound_sub = rospy.Subscriber(
+                "/Sensors/Ultrasound",
+                ultrasoundData,
+                self.handle_incoming_ultrasound
+        )
         self.turn_req = rospy.ServiceProxy('turnAngle', turnAngle)
         self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.drive_request = rospy.ServiceProxy('requestDrive', requestDrive)
@@ -52,6 +58,7 @@ class RobotController():
         self.balls_collected = 0
         self.front_cam = RobotCamera()
         self.arm_cam = RobotCamera()
+        self.ultrasound_data = ultrasoundData()
         #this is bad, should use like inheritance or some nonsense
         self.arm_cam.ball_in_grabber = False
 
@@ -86,11 +93,12 @@ class RobotController():
             self.front_cam_activate_pub.publish(self.front_cam_on)
 
     def set_home_here(self):
-        self.odom_home.pos_x = self.odom_estimate.pos_x
-        self.odom_home.pos_y = self.odom_estimate.pos_y
-        self.odom_home.angle = self.odom_estimate.angle
+        self.odom_home = copy.deepcopy(odom_estimate)
 
     #======================= Callback Functions ===============================
+    def handle_incoming_ultrasound(self, ultrasound_data):
+        self.ultrasound_data = ultrasound_data
+
     def handle_incoming_arm_cam_data(self, cam_data):
         if self.arm_cam.see_ball != cam_data.see_ball:
             self.arm_cam = cam_data

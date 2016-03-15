@@ -1,17 +1,10 @@
 
 class grab_ball():
-
 	def __init__(self):
-		
 		self.initiate_pickup():
-		
-		
-	
 	
 	def initiate_pickup():
-		
 		self.lower_arm()
-		
 		while(True):
 		image = self.get_image()
 			if(image == center):
@@ -21,13 +14,10 @@ class grab_ball():
 				move_to_side(left)
 			elif(image == left):
 				move_to_side(right)
-		
 		self.lower_arm()
 		self.grab_ball()
 		self.raise_arm()
 					
-
-						
 	def pickup_ball():
 		self.lower_arm()
 		self.grab_ball()
@@ -61,7 +51,5 @@ class grab_ball():
 	def drop_ball():
 		return 'm30100'
 
-
 	def get_image():
-
 		# call get image from the top camera

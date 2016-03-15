@@ -1,37 +1,35 @@
-class collisionDetection:
-
-	def __init__(self, connection, controller):
+class collisionDetection():
+	def __init__(self, connection):
 		# Initialize all sensor readings to 0
 		self.readingFront = 0
 		self.readingLeft = 0
 		self.readingRight = 0
-		self.arduinoConn = connection
-		self.controller = controller
+		self.connection = connection
 
 	# This function gets the sensor readings for all sensors
 	def getSensorReadings(self):
 		# connect to Arduino
-		connection.write('u1')
+		self.connection.write('u1')
 		self.readingFront = int(connection.readline())
 
-		connection.write('u2')
+		self.connection.write('u2')
 		self.readingLeft = int(connection.readline())
 
-		connection.write('u3')
+		self.connection.write('u3')
 		self.readingRight = int(connection.readline())
 
 	# This returns sensor reading only for a given sensor
 	def getSensorReading(self, sensor):
 		if sensor == 1:
-			connection.write('u1')
+			self.connection.write('u1')
 			self.readingFront = int(connection.readline())
 
 		elif sensor == 2:
-			connection.write('u2')
+			self.connection.write('u2')
 			self.readingLeft = int(connection.readline())
 
 		elif sensor == 3:
-			connection.write('u3')
+			self.connection.write('u3')
 			self.readingRight = int(connection.readline())
 		else:
 			print "ERROR : wrong sensor id passed"
@@ -44,22 +42,26 @@ class collisionDetection:
 		# Object is detected turn left 90 degrees
 		rotateLeft90Degress()
 
-		# Now move robot till right ultrasound sensor does not detect any object
+		# Now move robot till right ultrasound sensor does not
+                # detect any object
 		while(this.readingRight < 20):
-			# move the controller a little bit forward at say 1 second step
+			# move the controller a little bit forward at
+                        # say 1 second step
 			self.driveRobot(100,0)
 			rospy.sleep(1)
 			self.driveRobot(0,0)
 			# Update the right sensor reading
 			getSensorReading(3)
 
-		# So now the right sensor reading is clear, move a bit more forward so that we 
-		# account for robot`s body length as well
+		# So now the right sensor reading is clear, move a bit
+                # more forward so that we account for robot`s body length
+                # as well
 		self.driveRobot(100,0)
 		rospy.sleep(2)
 		self.driveRobot(0,0)
 
-		# Now we are clear of the object, rotate to the right 90 degress so that we are in the same direction
+		# Now we are clear of the object, rotate to the right 90
+                # degress so that we are in the same direction
 		rotateRight90Degrees()
 
 	def rotateLeft90Degress(self):
