@@ -5,7 +5,7 @@ import math
 import rospy
 import struct
 from assignment1.srv import armPose
-from assignment1.msg import grabBall, ultrasoundData
+from assignment1.msg import grabBall, ultrasoundData, camera_data
 
 class collisionDetection():
 	def __init__(self, connection):
@@ -45,6 +45,7 @@ class collisionDetection():
 
 class ArmController():
     def __init__(self):
+        self.arm_cam = camera_data()
         self.connection = None
         self.prev_grab = 0
         #self.arm_struct = struct.Struct('')
@@ -54,6 +55,11 @@ class ArmController():
         rospy.init_node('arm_controller')
         self.pose_service = rospy.Service('armPose', armPose,
                                           self.handle_pose_req)
+        self.arm_cam_sub = rospy.Subscriber(
+                "/arm_cam/vision_info",
+                camera_data,
+                self.handle_incoming_arm_cam_data
+        )
         self.grab_ball_sub = rospy.Subscriber(
                 "/Ball_Detector/ball_positioned",
                 grabBall,
@@ -91,6 +97,9 @@ class ArmController():
         self.connect_robot()
         self.collision_detector = collisionDetection(self.connection)
         rospy.spin()
+
+    def handle_incoming_arm_cam_data(self, cam_data):
+        self.arm_cam = cam_data
 
     def collision_avoidance_loop(self):
         while self.avoid_collisions:

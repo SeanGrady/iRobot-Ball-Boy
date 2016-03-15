@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import random
 from robot_camera import RobotCamera
 from std_msgs.msg import Bool, String
 from assignment1.msg import camera_data, roomba_odom, ultrasoundData
@@ -100,24 +101,22 @@ class RobotController():
         self.ultrasound_data = ultrasound_data
 
     def handle_incoming_arm_cam_data(self, cam_data):
-        if self.arm_cam.see_ball != cam_data.see_ball:
-            self.arm_cam = cam_data
-            print "setting arm cam info: ", arm_cam.see_ball
-            """
-            self.arm_cam.see_ball = cam_data.see_ball
-            self.arm_cam.ball_pos = cam_data.ball_pos
-            self.arm_cam.ball_size = cam_data.ball_size
-            """
+        self.arm_cam = cam_data
+        print "setting arm cam info: ", self.arm_cam.see_ball
+        """
+        self.arm_cam.see_ball = cam_data.see_ball
+        self.arm_cam.ball_pos = cam_data.ball_pos
+        self.arm_cam.ball_size = cam_data.ball_size
+        """
 
     def handle_incoming_front_cam_data(self, cam_data):
-        if self.front_cam.see_ball != cam_data.see_ball:
-            self.front_cam = cam_data
-            print "setting front cam info: ", front_cam.see_ball
-            """
-            self.front_cam.see_ball = cam_data.see_ball
-            self.front_cam.ball_pos = cam_data.ball_pos
-            self.front_cam.ball_size = cam_data.ball_size
-            """
+        self.front_cam = cam_data
+        print "setting front cam info: ", self.front_cam.see_ball
+        """
+        self.front_cam.see_ball = cam_data.see_ball
+        self.front_cam.ball_pos = cam_data.ball_pos
+        self.front_cam.ball_size = cam_data.ball_size
+        """
 
     def handle_incoming_odometry(self, odom_message):
         self.odom_estimate = odom_message
@@ -251,6 +250,71 @@ class RobotController():
             #move toward bucket
         """
         pass
+
+    #=========================== Navigation ===================================
+    def moveAroundObjectDetected(self):
+            # Object is detected turn left 90 degrees
+            rotateLeft90Degress()
+
+            # Now move robot till right ultrasound sensor does not
+            # detect any object
+            while(this.readingRight < 20):
+                    # move the controller a little bit forward at
+                    # say 1 second step
+                    self.driveRobot(100,0)
+                    rospy.sleep(1)
+                    self.driveRobot(0,0)
+                    # Update the right sensor reading
+                    getSensorReading(3)
+
+            # So now the right sensor reading is clear, move a bit
+            # more forward so that we account for robot`s body length
+            # as well
+            self.driveRobot(100,0)
+            rospy.sleep(2)
+            self.driveRobot(0,0)
+
+            # Now we are clear of the object, rotate to the right 90
+            # degress so that we are in the same direction
+            rotateRight90Degrees()
+
+    def rotateLeft90Degress(self):
+            current_angle = self.odom_estimate.angle
+            target_angle = current_angle + 90
+            self.driveRobot(0, 40)
+            while(current_angle < target_angle):
+                    rospy.sleep(0.25)
+                    current_angle = self.odom_estimate.angle
+            self.driveRobot(0,0)
+
+    def rotateRight90Degrees(self):
+            current_angle = self.odom_estimate.angle
+            target_angle = current_angle - 90
+            self.driveRobot(0, 40)
+            while(current_angle > target_angle):
+                    rospy.sleep(0.25)
+                    current_angle = self.odom_estimate.angle
+            self.driveRobot(0,0)
+
+    def rotateLeft90DegreesRandom(self, maxTime):
+            current_angle = self.odom_estimate.angle
+            self.driveRobot(0, 40)
+            # Sleep for a random time between 0s to 4s
+            rospy.sleep(random.random() * maxTime)
+            self.driveRobot(0,0)
+
+    def driveRobotForwardRandom(self, maxTime):
+            self.driveRobot(100,0)
+            rospy.sleep(random.random() * maxTime)
+            self.driveRobot(0,0)
+
+    def navigateRandomly(self):
+            # Initial state , move forward for a random time first
+            # Move randomly till the camera detects a ball
+            while self.front_cam.see_ball not True:
+                    # Sleep for a random time between 0s to 4s
+                    driveRobotForwardRandom(4);
+                    rotateLeft90DegreesRandom(3);
 
 if __name__ == "__main__":
     rc = RobotController()

@@ -1,0 +1,3 @@
+uint32 sensor_front
+uint32 sensor_left
+uint32 sensor_right
