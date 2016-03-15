@@ -93,17 +93,23 @@ class RobotController():
     #======================= Callback Functions ===============================
     def handle_incoming_arm_cam_data(self, cam_data):
         if self.arm_cam.see_ball != cam_data.see_ball:
-            print "setting arm cam info: ", cam_data.see_ball
+            self.arm_cam = cam_data
+            print "setting arm cam info: ", arm_cam.see_ball
+            """
             self.arm_cam.see_ball = cam_data.see_ball
             self.arm_cam.ball_pos = cam_data.ball_pos
             self.arm_cam.ball_size = cam_data.ball_size
+            """
 
     def handle_incoming_front_cam_data(self, cam_data):
         if self.front_cam.see_ball != cam_data.see_ball:
-            print "setting front cam info: ", cam_data.see_ball
+            self.front_cam = cam_data
+            print "setting front cam info: ", front_cam.see_ball
+            """
             self.front_cam.see_ball = cam_data.see_ball
             self.front_cam.ball_pos = cam_data.ball_pos
             self.front_cam.ball_size = cam_data.ball_size
+            """
 
     def handle_incoming_odometry(self, odom_message):
         self.odom_estimate = odom_message
