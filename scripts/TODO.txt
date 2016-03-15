@@ -1,3 +1,4 @@
-use namespacing and remapping so that different vision nodes publish on different topics (arm_vision vs front_vision)
-finish modifying time_avg_balls to do something more intelligent than just checking if x, y and r have been in a range for 10 frames
-MAKE ODOMETRY DEAL WITH ENCODER ROLLOVER
+test out odometry
+integrate navigation_utils scripts from sreejith
+integrate ball grabbing script from John
+sort out state machine business
