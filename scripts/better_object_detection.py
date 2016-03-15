@@ -16,8 +16,8 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.ball_hsv_lower = (40, 106, 66)
-        self.ball_hsv_upper = (67, 255, 255)
+        self.ball_hsv_lower = (38, 89, 29)
+        self.ball_hsv_upper = (87, 255, 255)
         self.bucket_hsv_lower = (77, 128, 66)
         self.bucket_hsv_upper = (99, 255, 255)
         self.blur_size = 9
@@ -61,9 +61,9 @@ class CamVision():
             sys.exit()
 
     def init_debug_consts(self):
-        self.show_circles = False
+        self.show_circles = True
         self.show_avg_circles = False
-        self.show_bucket = True
+        self.show_bucket = False
 
     def init_opencv_things(self):
         self.circle_struct = CirclesStruct(10)

@@ -29,7 +29,8 @@ def rcom(string):
 start = rcom('128')
 safe = rcom('131')
 shutdown_cmd = rcom('173')
-connection.write(shutdown_cmd)
+reset_cmd = rcom('7')
+#connection.write(shutdown_cmd)
 connection.write(start)
 connection.write(safe)
 

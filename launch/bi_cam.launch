@@ -11,6 +11,8 @@
         </node>
 
         <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="front"/>
+
+        <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
     </group>
 
     <group ns="arm_cam">
@@ -25,14 +27,11 @@
         </node>
 
         <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="arm"/>
+
+        <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
     </group>
 
     <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
 
-    <node pkg="assignment1" type="controller.py" name="controller" output="screen" />
-
-    <node pkg="assignment1" type="arm_controller.py" name="arm_controller" output="screen" />
-
-    <node pkg="assignment1" type="roomba_node.py" name="roomba_node" output="screen" />
-
 </launch>
+

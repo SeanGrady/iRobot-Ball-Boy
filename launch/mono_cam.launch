@@ -1,10 +1,13 @@
 <launch>
-    <env name = "GSCAM_CONFIG" value = "v4l2src device=/dev/video0 !
-        video/x-raw-rgb,framerate-25/1 ! ffmpegcolorspace" />
-
     <group ns="front_cam">
-        <node pkg="gscam" name="web_cam" type="gscam">
-            <param name = "camera_name" value = "web_cam" />
+        <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+            <param name="video_device" value="/dev/video0" />
+            <param name="image_width" value="640" />
+            <param name="image_height" value="480" />
+            <param name="pixel_format" value="mjpeg" />
+            <param name="camera_frame_id" value="usb_cam" />
+            <param name="io_method" value="mmap"/>
+            <remap from="usb_cam/image_raw" to="camera/image_raw" />
         </node>
 
         <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="front"/>

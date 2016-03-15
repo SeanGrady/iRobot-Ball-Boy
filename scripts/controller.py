@@ -8,12 +8,12 @@ from assignment1.msg import camera_data, roomba_odom, ultrasoundData
 from assignment1.srv import *
 import math as m
 import numpy as np
-from copy import deepcopy
+import copy
 
 class RobotController():
     def __init__(self):
         rospy.init_node("robot_controller")
-        self.grab_request("requestGrab", requestGrab)
+        self.grab_request = rospy.ServiceProxy("requestGrab", requestGrab)
         self.arm_cam_activate_pub = rospy.Publisher(
                 "/arm_cam/activation",
                 Bool,
@@ -104,7 +104,7 @@ class RobotController():
             self.front_cam_activate_pub.publish(self.front_cam_on)
 
     def set_home_here(self):
-        self.odom_home = copy.deepcopy(odom_estimate)
+        self.odom_home = copy.deepcopy(self.odom_estimate)
 
     #======================= Callback Functions ===============================
     def handle_incoming_ultrasound(self, ultrasound_data):
@@ -271,67 +271,67 @@ class RobotController():
     #=========================== Navigation ===================================
     def moveAroundObjectDetected(self):
             # Object is detected turn left 90 degrees
-            rotateLeft90Degress()
+            self.rotateLeft90Degress()
 
             # Now move robot till right ultrasound sensor does not
             # detect any object
-            while(this.readingRight < 20):
+            while(self.readingRight < 20):
                     # move the controller a little bit forward at
                     # say 1 second step
-                    self.driveRobot(100,0)
+                    self.drive_robot(100,0)
                     rospy.sleep(1)
-                    self.driveRobot(0,0)
+                    self.drive_robot(0,0)
                     # Update the right sensor reading
-                    getSensorReading(3)
+                    self.getSensorReading(3)
 
             # So now the right sensor reading is clear, move a bit
             # more forward so that we account for robot`s body length
             # as well
-            self.driveRobot(100,0)
+            self.drive_robot(100,0)
             rospy.sleep(2)
-            self.driveRobot(0,0)
+            self.drive_robot(0,0)
 
             # Now we are clear of the object, rotate to the right 90
             # degress so that we are in the same direction
-            rotateRight90Degrees()
+            self.rotateRight90Degrees()
 
     def rotateLeft90Degress(self):
             current_angle = self.odom_estimate.angle
             target_angle = current_angle + 90
-            self.driveRobot(0, 40)
+            self.drive_robot(0, 40)
             while(current_angle < target_angle):
                     rospy.sleep(0.25)
                     current_angle = self.odom_estimate.angle
-            self.driveRobot(0,0)
+            self.drive_robot(0,0)
 
     def rotateRight90Degrees(self):
             current_angle = self.odom_estimate.angle
             target_angle = current_angle - 90
-            self.driveRobot(0, 40)
+            self.drive_robot(0, 40)
             while(current_angle > target_angle):
                     rospy.sleep(0.25)
                     current_angle = self.odom_estimate.angle
-            self.driveRobot(0,0)
+            self.drive_robot(0,0)
 
     def rotateLeft90DegreesRandom(self, maxTime):
             current_angle = self.odom_estimate.angle
-            self.driveRobot(0, 40)
+            self.drive_robot(0, 40)
             # Sleep for a random time between 0s to 4s
             rospy.sleep(random.random() * maxTime)
-            self.driveRobot(0,0)
+            self.drive_robot(0,0)
 
-    def driveRobotForwardRandom(self, maxTime):
-            self.driveRobot(100,0)
+    def drive_robotForwardRandom(self, maxTime):
+            self.drive_robot(100,0)
             rospy.sleep(random.random() * maxTime)
-            self.driveRobot(0,0)
+            self.drive_robot(0,0)
 
     def navigate_randomly(self):
             # Initial state , move forward for a random time first
             # Move randomly till the camera detects a ball
             while not self.front_cam.see_ball:
                     # Sleep for a random time between 0s to 4s
-                    driveRobotForwardRandom(4);
-                    rotateLeft90DegreesRandom(3);
+                    self.drive_robotForwardRandom(4);
+                    self.rotateLeft90DegreesRandom(3);
 
 if __name__ == "__main__":
     rc = RobotController()
