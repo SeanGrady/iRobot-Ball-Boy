@@ -16,8 +16,10 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.hsv_lower = (40, 106, 66)
-        self.hsv_upper = (67, 255, 255)
+        self.ball_hsv_lower = (40, 106, 66)
+        self.ball_hsv_upper = (67, 255, 255)
+        self.bucket_hsv_lower = (77, 128, 66)
+        self.bucket_hsv_upper = (99, 255, 255)
         self.blur_size = 9
         self.hough_accumulator = 1
         self.hough_min_dist = 100
@@ -60,7 +62,8 @@ class CamVision():
 
     def init_debug_consts(self):
         self.show_circles = False
-        self.show_avg_circles = True
+        self.show_avg_circles = False
+        self.show_bucket = True
 
     def init_opencv_things(self):
         self.circle_struct = CirclesStruct(10)
@@ -89,6 +92,11 @@ class CamVision():
         )
         self.image_pub = rospy.Publisher(
                 "circled_image",
+                Image,
+                queue_size = 10
+        )
+        self.bucket_image_pub = rospy.Publisher(
+                "bucket_image",
                 Image,
                 queue_size = 10
         )
@@ -123,10 +131,10 @@ class CamVision():
             )
             if self.camera_type == "front":
                 image = cv2.flip(image, 0)
-            grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-            grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
-            self.grey_pub.publish(grey_ros_image)
-            cam_info, avg_circles, circles = self.build_camera_info(image)
+            #grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+            #grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
+            #self.grey_pub.publish(grey_ros_image)
+            cam_info, avg_circles, circles, bucket_blob = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
             if self.show_circles == True:
                 circled_image = self.draw_circles(image, circles)
@@ -134,10 +142,19 @@ class CamVision():
             if self.show_avg_circles == True:
                 circled_image = self.draw_circles(image, np.array([avg_circles]))
                 self.publish_cv_image(circled_image, self.image_pub)
+            if self.show_bucket == True:
+                bucket_image = self.render_bucket(image, bucket_blob)
+                self.publish_cv_image(bucket_image, self.bucket_image_pub)
 
     def build_camera_info(self, image):
         #image should be a bgr8 cv2 image
         circles = self.color_circles(image)
+        see_bucket = False
+        bucket_blob = None
+        if self.camera_type == "front":
+            bucket_blob = self.detect_bucket(image)
+            if bucket_blob is not None:
+                see_bucket = True
         cam_info = camera_data()
         self.circle_struct.add_frame_circles(circles)
         avg_circles = self.circle_struct.circles_list[0].avg
@@ -152,7 +169,11 @@ class CamVision():
             cam_info.see_ball = see_ball
             cam_info.ball_pos = ball_pos
             cam_info.ball_size = ball_size
-        return cam_info, avg_circles, circles
+            cam_info.see_bucket = see_bucket
+            if see_bucket:
+                cam_info.bucket_size = bucket_blob[3]
+                cam_info.bucket_pos = [bucket_blob[4], bucket_blob[5]]
+        return cam_info, avg_circles, circles, bucket_blob
 
     def get_ball_info(self):
         if self.circle_struct.circles_list[0].bin_avg > 0.75:
@@ -188,19 +209,62 @@ class CamVision():
                 self.circle_struct[i].add_circle(circle)
 
     def color_circles(self, image):
-        masked_image = self.threshold_color(image)
+        masked_image, mask = self.threshold_color(image, self.constants.ball_hsv_lower, self.constants.ball_hsv_upper)
         circles = self.hough_circles(masked_image, image)
         #self.publish_cv_image(circled_image)
         return circles
 
-    def threshold_color(self, image):
-        #threshold image on color and return result to display
-        mask = self.create_hsv_mask(image)
-        masked_image = self.mask_image(image, mask)
-        self.publish_mask(masked_image)
-        return masked_image
+    def detect_bucket(self, image):
+        bucket_blobs = self.detect_bucket_blobs(image)
+        biggest_blob = None
+        if bucket_blobs is not None:
+            biggest_blob = max(bucket_blobs, key=lambda x: x[-1])
+        return biggest_blob
 
-    def create_hsv_mask(self, rgb_image):
+    def detect_bucket_blobs(self, image):
+        masked_image, mask = self.threshold_color(
+                image,
+                self.constants.bucket_hsv_lower,
+                self.constants.bucket_hsv_upper
+        )
+        blobs = self.find_contours(mask)
+        return blobs
+
+    def find_contours(self, masked_image):
+        contour_struct = cv2.findContours(
+                masked_image,
+                cv2.RETR_LIST,
+                cv2.CHAIN_APPROX_NONE
+        )
+        contours = contour_struct[0]
+        blobs = []
+        if len(contours)>0: 
+            for contour in contours:
+                x, y, w, h = cv2.boundingRect(contour) 
+                area = w*h
+                x_c, y_c = self.find_center(x, y, w, h)
+                blobs.append((x, y, w, h, int(x_c), int(y_c), area))
+        else:
+            return None
+        return blobs
+
+    def find_center(self, x, y, w, h):
+        x_c = x + ((x + w) / 2.) 
+        y_c = y + ((y + w) / 2.) 
+        return x_c, y_c
+
+    def threshold_color(self, image, hsv_lower, hsv_upper):
+        #threshold image on color and return result to display
+        mask = self.create_hsv_mask(
+                image,
+                hsv_lower,
+                hsv_upper
+        )
+        masked_image = self.mask_image(image, mask)
+        #self.publish_mask(masked_image)
+        return masked_image, mask
+
+    def create_hsv_mask(self, rgb_image, hsv_lower, hsv_upper):
         #blur frame and convert to HSV colorspace
         #may end up resizing frame if need more FPS on odroid
         #frame = imutils.resize(rgb_image, width=600)
@@ -212,7 +276,7 @@ class CamVision():
         hsv = cv2.cvtColor(rgb_image, cv2.COLOR_BGR2HSV)
 
         #use processed image to create a mask and return it
-        mask = cv2.inRange(hsv, self.constants.hsv_lower, self.constants.hsv_upper)
+        mask = cv2.inRange(hsv, hsv_lower, hsv_upper)
         mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, self.constants.close_kernel)
         mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, self.constants.open_kernel)
         mask = cv2.dilate(mask, self.constants.open_kernel)
@@ -259,6 +323,21 @@ class CamVision():
                         -1
                 )
         return image
+
+    def render_bucket(self, hsv_image, bucket_blob):
+        if bucket_blob is None:
+            return hsv_image
+        x, y, w, h, x_c, y_c = bucket_blob[:6]
+        bPoint1, bPoint2 = (x, y), (x+w, y+h)
+        cv2.rectangle(hsv_image, bPoint1, bPoint2, [255, 255, 255], 2)
+        cv2.rectangle(
+                hsv_image,
+                (x_c - 5, y_c - 5),
+                (x_c + 5, y_c + 5),
+                (0, 128, 255),
+                -1
+        )
+        return hsv_image
 
     def publish_mask(self, mask_image):
         ros_image = self.bridge.cv2_to_imgmsg(mask_image, "bgr8")

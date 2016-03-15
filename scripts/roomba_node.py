@@ -79,11 +79,33 @@ class DriveNode():
 
     def get_encoder_diffs(self):
         left_counts, right_counts = self.get_encoder_counts()
-        left_diff = left_counts - self.left_total
-        right_diff = right_counts - self.right_total
+        left_diff, right_diff = self.rollover_compensator(left_counts, right_counts)
         left_mm = self.counts_to_mm(left_diff)
         right_mm = self.counts_to_mm(right_diff)
         return left_mm, right_mm
+
+    def rollover_compensator(self, left_counts, right_counts):
+        left_diff = left_counts - self.left_total
+        right_diff = right_counts - self.right_total
+        if abs(left_diff) > self.encoder_max * 0.2:
+            #rollover on left encoder
+            if left_counts < self.left_total:
+                #forward rollover
+                left_diff = (self.encoder_max - self.left_total) + left_counts
+            if left_counts > self.left_total
+                #backward rollover
+                left_diff = (self.left_total - self.encoder_max) - left_counts
+        if abs(right_diff) > self.encoder_max * 0.2:
+            #rollover on right encoder
+            if right_counts < self.right_total:
+                #forward rollover
+                right_diff = (self.encoder_max - self.right_total) + right_counts
+            if right_counts > self.right_total
+                #backward rollover
+                right_diff = (self.right_total - self.encoder_max) - right_counts
+        return left_diff, right_diff
+
+    def update_encoder_totals(self, left_counts, right_counts):
 
     def counts_to_mm(self, counts):
         mm = counts * (1/508.8) * (math.pi*72)

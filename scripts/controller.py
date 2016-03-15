@@ -47,6 +47,8 @@ class RobotController():
         #=================== Environment Variables ============================
         self.mapping_fix = False
         self.odom_estimate = roomba_odom()
+        self.odom_home = roomba_odom()
+        self.set_home_here()
         self.balls_collected = 0
         self.front_cam = RobotCamera()
         self.arm_cam = RobotCamera()
@@ -82,6 +84,11 @@ class RobotController():
         elif camera == "front" and self.front_cam_on.data != b_value:
             self.front_cam_on.data = b_value
             self.front_cam_activate_pub.publish(self.front_cam_on)
+
+    def set_home_here(self):
+        self.odom_home.pos_x = self.odom_estimate.pos_x
+        self.odom_home.pos_y = self.odom_estimate.pos_y
+        self.odom_home.angle = self.odom_estimate.angle
 
     #======================= Callback Functions ===============================
     def handle_incoming_arm_cam_data(self, cam_data):
@@ -194,11 +201,12 @@ class RobotController():
         self.orient_toward_waypoint(waypoint)
         print self.odom_estimate
         current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+        self.drive_robot(100, 0)
         while np.linalg.norm(waypoint - current_pos) > tolerance:
-            self.drive_robot(100, 0)
-            rospy.sleep(.1)
+            rospy.sleep(.25)
             current_pos = np.array(self.odom_estimate.pos_x,
                     self.odom_estimate.pos_y)
+        self.drive_robot(0, 0)
         print "Arrived at waypoint"
 
     def approach_ball(self, r_thresh):
