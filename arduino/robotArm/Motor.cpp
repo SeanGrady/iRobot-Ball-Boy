@@ -27,9 +27,15 @@ void Motor::moveMotor1(int dir,int angle) {
 	else if(dir ==1)
 		myMotor1->run(FORWARD);
 
-	myMotor1->setSpeed(150);
+	myMotor1->setSpeed(200);
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
+
+    if(Serial.available()){
+        char c = Serial.read();
+        if( c == 'q')
+          break;
+    }
 		currentSensorVal = sensor.getSensor1Value();
     if(dir == 1 && currentSensorVal > 790){
       break;
@@ -55,15 +61,20 @@ void Motor::moveMotor2(int dir,int angle) {
 	else if(dir ==1)
 		myMotor2->run(FORWARD);
 
-	myMotor2->setSpeed(255);
+	myMotor2->setSpeed(200);
 	int currentSensorVal = sensor.getSensor2Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {      
+		if(Serial.available()){
+        char c = Serial.read();
+        if( c == 'q')
+          break;
+    }
 		currentSensorVal = sensor.getSensor2Value();
-    if(dir == 1 && currentSensorVal > 775){
+    if(dir == 1 && currentSensorVal > 689){
       break;
     }
     else if(dir == 0){
-      if(currentSensorVal < 689){
+      if(currentSensorVal < 389){
         break;
       }
     }
@@ -86,17 +97,22 @@ void Motor::moveMotor3(int dir,int angle) {
 	myMotor3->setSpeed(75);
 	int currentSensorVal = sensor.getSensor3Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
+    if(Serial.available()){
+        char c = Serial.read();
+        if( c == 'q')
+          break;
+    }
 		currentSensorVal = sensor.getSensor3Value();
 
     
     /*if(dir == 0 && temp == 10000){
       break;
     }
-    else */
-    if(dir == 1 && currentSensorVal > 736){
+    else */ 
+    if(dir == 1 && currentSensorVal > 300){ //130
       break;
     }
-    else if(dir == 0 && currentSensorVal < 470){
+    else if(dir == 0 && currentSensorVal < 140){
       break;
     }
     //temp++;
@@ -117,14 +133,17 @@ void Motor::moveMotor4(int dir,int angle) {
   else if(dir ==1)
     myMotor4->run(FORWARD);
 
-  myMotor4->setSpeed(150);
+  myMotor4->setSpeed(200);
   int currentSensorVal = sensor.getSensor4Value();
   while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
+
+    if(Serial.available()){
+        char c = Serial.read();
+        if( c == 'q')
+          break;
+    }
+    
     currentSensorVal = sensor.getSensor4Value();
-
-    // center is 500
-
-    //0 goes right
     
     if(dir == 0 && currentSensorVal > 600){
       break;
