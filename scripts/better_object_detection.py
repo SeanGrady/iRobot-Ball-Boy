@@ -25,8 +25,8 @@ class VisionConstants:
         self.hough_min_dist = 100
         self.hough_radius_min = 10
         self.hough_radius_max = 600
-        self.hough_param1 = 40
-        self.hough_param2 = 30
+        self.hough_param1 = 50
+        self.hough_param2 = 40
 
         openKernSize = 20
         closeKernSize = 5
@@ -136,7 +136,7 @@ class CamVision():
             #self.grey_pub.publish(grey_ros_image)
             cam_info, avg_circles, circles, bucket_blob = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
-            if self.show_circles == True:
+            if self.show_circles == True and circles is not None:
                 circled_image = self.draw_circles(image, circles)
                 self.publish_cv_image(circled_image, self.image_pub)
             if self.show_avg_circles == True:
@@ -191,6 +191,7 @@ class CamVision():
         see_ball = 0
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
+            print circles
             for x, y, r in circles:
                 #print x, y, r
                 if x in self.grab_xrange and y in self.grab_yrange and r > self.grab_size:
@@ -311,8 +312,8 @@ class CamVision():
     def draw_circles(self, image, circles):
         #draw all the detected circles, and a box at their centers
         if circles is not None:
-            #circles = np.round(circles[0, :]).astype("int")
-            circles = np.round(circles).astype("int")
+            circles = np.round(circles[0, :]).astype("int")
+            #circles = np.round(circles).astype("int")
             for x, y, r in circles:
                 cv2.circle(image, (x, y), r, (0, 0, 255), 4)
                 cv2.rectangle(

@@ -330,8 +330,8 @@ class RobotController():
             # Move randomly till the camera detects a ball
             while not self.front_cam.see_ball:
                     # Sleep for a random time between 0s to 4s
-                    self.drive_robotForwardRandom(4);
-                    self.rotateLeft90DegreesRandom(3);
+                    self.drive_robotForwardRandom(5);
+                    self.rotateLeft90DegreesRandom(2);
 
 if __name__ == "__main__":
     rc = RobotController()

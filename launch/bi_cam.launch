@@ -11,8 +11,6 @@
         </node>
 
         <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="front"/>
-
-        <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
     </group>
 
     <group ns="arm_cam">
@@ -27,8 +25,6 @@
         </node>
 
         <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="arm"/>
-
-        <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
     </group>
 
     <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
