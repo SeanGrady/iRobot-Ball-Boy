@@ -50,6 +50,7 @@ class RobotController():
                 Bool,
                 queue_size = 10
         )
+
         self.turn_req = rospy.ServiceProxy('turnAngle', turnAngle)
         self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.drive_request = rospy.ServiceProxy('requestDrive', requestDrive)
@@ -59,6 +60,8 @@ class RobotController():
         self.front_cam_on.data = False
         self.seek_speed = 25
         self.collision_threshold = 15.
+        self.bucket_dist = 10
+
         #=================== Environment Variables ============================
         self.mapping_fix = False
         self.odom_estimate = roomba_odom()
@@ -72,6 +75,10 @@ class RobotController():
         self.arm_cam.ball_in_grabber = False
 
     def control_loop(self):
+        while not rospy.is_shutdown():
+            self.orient_to_home()
+            self.competition()
+        """
         rospy.sleep(3)
         print "entering control loop"
         self.switch_to_cam("front")
@@ -92,6 +99,25 @@ class RobotController():
         self.grab_close_ball()
         print "returning home"
         self.goto_waypoint((0,0))
+        """
+
+    def competition(self):
+        self.navigate_randomly_avoid_collisions()
+        self.front_cam_center_ball()
+        self.approach_ball()
+        self.grab_close_ball()
+        bucket = (self.odom_home.pos_x, self.odom_home.pos_y)
+        self.goto_bucket_waypoint(bucket)
+        self.search_bucket()
+        self.approach_bucket()
+        self.drop_ball_in_bucket()
+
+    def orient_to_home(self):
+        self.search_bucket()
+        self.approach_bucket()
+        self.turnRight90Degrees()
+        self.turnRight90Degrees()
+        self.set_home_here()
 
     def camera_switch(self, camera, value):
         b_value = bool(value)
@@ -131,6 +157,9 @@ class RobotController():
         self.odom_estimate = odom_message
 
     #======================= State Functions ==================================
+    def drop_ball_in_bucket(self):
+        pass
+
     def switch_to_cam(self, camera):
         if camera == "front":
             self.camera_switch("arm", 0)
@@ -220,38 +249,92 @@ class RobotController():
         current_ang = self.odom_estimate.angle
         slope = (target_y - current_y) / (target_x - current_x)
         angle = m.atan(slope)
-        self.turn_req(angle)
+        self.turn_to_angle(angle)
 
     def search_ball(self):
-        self.camera_switch("arm",0)
-        self.camera_switch("front", 1)
+        self.switch_to_cam("front")
         """
         while not self.front_cam.see_ball:
             #look for balls
         """
 
     def search_bucket(self):
-        self.camera_switch("arm",0)
-        """
-        while not self.front_cam.see_ball:
-            #look for balls
-        """
+        self.switch_to_cam("front")
+        current_angle = self.odom_estimate.angle
+        target_angle = current_angle + 360
+        self.drive_robot(0, 40)
+        while not self.front_cam.see_bucket and self.current_angle < target_angle:
+            rospy.sleep(.5)
+            current_angle = self.odom_estimate.angle
+        self.drive_robot(0,0)
+        if self.front_cam.see_bucket:
+            return True
+        else:
+            return False
+
+    def center_bucket(self):
+        self.switch_to_cam("front")
+        offset = 320 - self.front_cam.bucket_pos[0]
+        while offset > 20:
+            print "offset", offset
+            #turn_rate = max(min(offset, 50), 20)
+            turn_rate = self.seek_speed 
+            self.drive_robot(0, turn_rate)
+            rospy.sleep(0.3)
+            self.drive_robot(0, 0)
+            rospy.sleep(1.)
+            offset = 320 - self.front_cam.bucket_pos[0]
+        print "centered bucket, sending stop command"
+        self.drive_robot(0, 0)
+
+    def approach_bucket(self):
+        self.enable_collision()
+        self.switch_to_cam("front")
+        self.drive_robot(50, 0)
+        while gelf.ultrasound_data.sensor_front > self.bucket_dist:
+            rospy.sleep(0.2)
+        self.drive_robot(0,0)
 
     def goto_waypoint(self, waypoint):
         print "pathing to waypoint ", waypoint
         #tolerance is in mm
-        tolerance = 300.
+        self.tolerance = 300.
         waypoint = np.array(waypoint)
         self.orient_toward_waypoint(waypoint)
         print self.odom_estimate
         current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+        success = self.drive_to_wp_avoid_col(waypoint, current_pos, False)
+        while not success:
+            self.moveAroundObjectDetected()
+            self.orient_toward_waypoint(waypoint)
+            current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+            success = self.drive_to_wp_avoid_col(waypoint, current_pos, False)
+
+    def goto_bucket_waypoint(self, waypoint):
+        print "pathing to waypoint ", waypoint
+        #tolerance is in mm
+        self.tolerance = 300.
+        waypoint = np.array(waypoint)
+        self.orient_toward_waypoint(waypoint)
+        print self.odom_estimate
+        current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+        success = self.drive_to_wp_avoid_col(waypoint, current_pos, True)
+        while not success:
+            self.moveAroundObjectDetected()
+            self.orient_toward_waypoint(waypoint)
+            current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+            success = self.drive_to_wp_avoid_col(waypoint, current_pos, True)
+
+    def drive_to_wp_avoid_col(self, waypoint, current_pos, bucket):
         self.drive_robot(100, 0)
-        while np.linalg.norm(waypoint - current_pos) > tolerance:
+        while np.linalg.norm(waypoint - current_pos) > self.tolerance and (((not self.front_cam.see_bucket) and bucket) or not bucket):
+            if self.ultrasound_data.sensor_front < self.collision_threshold:
+                return False
             rospy.sleep(.25)
             current_pos = np.array(self.odom_estimate.pos_x,
                     self.odom_estimate.pos_y)
         self.drive_robot(0, 0)
-        print "Arrived at waypoint"
+        return True
 
     def approach_ball(self, r_thresh):
         self.camera_switch('front', True)
@@ -288,13 +371,12 @@ class RobotController():
             self.rotateLeft90Degress()
             # Now move robot till right ultrasound sensor does not
             # detect any object
-            while self.ultrasound_data < (self.collision_threshold + 10):
+            while self.ultrasound_data.sensor_right < (self.collision_threshold + 10):
                     # move the controller a little bit forward at
                     # say 1 second step
                     self.drive_robot(100,0)
                     rospy.sleep(1)
                     self.drive_robot(0,0)
-                    # Update the right sensor reading
 
             # So now the right sensor reading is clear, move a bit
             # more forward so that we account for robot`s body length
@@ -302,7 +384,6 @@ class RobotController():
             self.drive_robot(100,0)
             rospy.sleep(2)
             self.drive_robot(0,0)
-
             # Now we are clear of the object, rotate to the right 90
             # degress so that we are in the same direction
             self.rotateRight90Degrees()
@@ -335,6 +416,15 @@ class RobotController():
             self.drive_robot(100,0)
             rospy.sleep(random.random() * maxTime)
             self.drive_robot(0,0)
+
+    def turn_to_angle(self, angle):
+        current_angle = self.odom_estimate.angle
+        self.drive_robot(0, 40)
+        while(current_angle > angle):
+            rospy.sleep(0.25)
+            current_angle = self.odom_estimate.angle
+        self.drive_robot(0,0)
+
 
     def navigate_randomly(self):
             # Initial state , move forward for a random time first

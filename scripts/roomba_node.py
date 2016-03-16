@@ -8,6 +8,7 @@ from assignment1.srv import *
 from assignment1.msg import roomba_odom
 from std_msgs.msg import String
 from pprint import pprint
+import numpy as np
 
 class DriveNode():
     def __init__(self):
@@ -76,6 +77,7 @@ class DriveNode():
         self.pose.pos_x += dx
         self.pose.pos_y += dy
         self.pose.angle += da
+        self.pose.angle = np.sign(self.pose.angle) * self.pose.angle % 360.
 
     def get_encoder_diffs(self):
         left_counts, right_counts = self.get_encoder_counts()

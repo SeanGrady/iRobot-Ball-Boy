@@ -250,8 +250,8 @@ class CamVision():
         return blobs
 
     def find_center(self, x, y, w, h):
-        x_c = x + ((x + w) / 2.) 
-        y_c = y + ((y + w) / 2.) 
+        x_c = x + (w / 2.) 
+        y_c = y + (h / 2.) 
         return x_c, y_c
 
     def threshold_color(self, image, hsv_lower, hsv_upper):
