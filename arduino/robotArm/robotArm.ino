@@ -38,7 +38,6 @@ void loop() {
       else if( code == 'c')
       {
         m.gotoCenter();
-        Serial.println("finished centering");
       }
       /** 
        *  U: This option followed by 5 digits 
@@ -66,12 +65,9 @@ void loop() {
             break;
           case 3:
             m.moveMotor3(dir,angle);
-            Serial.println("Motor 3");
             break;
           case 4:
-            Serial.println("Starting Motor 4");
             m.moveMotor4(dir,angle);
-            Serial.println("Motor 4");
             break;
           default:
             //Serial.println("Got a wrong motor id");
