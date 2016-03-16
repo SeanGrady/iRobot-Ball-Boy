@@ -89,7 +89,7 @@ class ArmController():
         while self.avoid_collisions:
             collision_data = self.update_collision_data()
             self.collision_data_pub.publish(collision_data)
-            rospy.sleep(2)
+            rospy.sleep(1)
 
     def locate_and_grab_ball(self):
         print "centering"
@@ -220,7 +220,7 @@ class ArmController():
             self.connection = serial.Serial(
                     self.port, 
 		    baudrate=9600,
-                    timeout=1
+                    timeout=2
             )
         except:
             print "Connection failed."
@@ -238,14 +238,22 @@ class ArmController():
     def get_sensor_readings(self):
             # connect to Arduino
             self.connection.write('u1')
+            rospy.sleep(.7)
             front = int(self.connection.readline())
             print " front: ", front
+            self.connection.flush()
 
             self.connection.write('u2')
+            rospy.sleep(.7)
             left = int(self.connection.readline())
+            print " left: ", left
+            self.connection.flush()
 
             self.connection.write('u3')
-            right = int(self.connection.readline())
+            rospy.sleep(.7)
+            right_raw = self.connection.readline()
+            print right_raw
+            right = int(right_raw)
             return left, right, front
 
     # This returns sensor reading only for a given sensor

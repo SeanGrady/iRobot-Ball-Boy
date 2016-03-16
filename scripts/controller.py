@@ -101,6 +101,13 @@ class RobotController():
         self.goto_waypoint((0,0))
         """
 
+    def find_bucket_test(self):
+        rospy.sleep(10)
+        self.beep_robot()
+        self.orient_to_home()
+        print self.odom_home
+        self.beep_robot()
+
     def competition(self):
         self.navigate_randomly_avoid_collisions()
         self.front_cam_center_ball()
@@ -115,8 +122,8 @@ class RobotController():
     def orient_to_home(self):
         self.search_bucket()
         self.approach_bucket()
-        self.turnRight90Degrees()
-        self.turnRight90Degrees()
+        self.rotateRight90Degrees()
+        self.rotateRight90Degrees()
         self.set_home_here()
 
     def camera_switch(self, camera, value):
@@ -263,7 +270,7 @@ class RobotController():
         current_angle = self.odom_estimate.angle
         target_angle = current_angle + 360
         self.drive_robot(0, 40)
-        while not self.front_cam.see_bucket and self.current_angle < target_angle:
+        while not self.front_cam.see_bucket and current_angle < target_angle:
             rospy.sleep(.5)
             current_angle = self.odom_estimate.angle
         self.drive_robot(0,0)
@@ -291,7 +298,8 @@ class RobotController():
         self.enable_collision()
         self.switch_to_cam("front")
         self.drive_robot(50, 0)
-        while gelf.ultrasound_data.sensor_front > self.bucket_dist:
+        while self.ultrasound_data.sensor_front > self.bucket_dist:
+            print self.ultrasound_data.sensor_front
             rospy.sleep(0.2)
         self.drive_robot(0,0)
 
@@ -446,4 +454,4 @@ class RobotController():
 
 if __name__ == "__main__":
     rc = RobotController()
-    rc.control_loop()
+    rc.find_bucket_test()

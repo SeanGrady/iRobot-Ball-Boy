@@ -1,0 +1,42 @@
+<launch>
+    <!--
+    <group ns="front_cam">
+        <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+            <param name="video_device" value="/dev/video1" />
+            <param name="image_width" value="640" />
+            <param name="image_height" value="480" />
+            <param name="pixel_format" value="mjpeg" />
+            <param name="camera_frame_id" value="usb_cam" />
+            <param name="io_method" value="mmap"/>
+            <remap from="usb_cam/image_raw" to="camera/image_raw" />
+        </node>
+
+        <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="front"/>
+    </group>
+    -->
+
+    <!--
+    <group ns="arm_cam">
+        <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+            <param name="video_device" value="/dev/video0" />
+            <param name="image_width" value="640" />
+            <param name="image_height" value="480" />
+            <param name="pixel_format" value="mjpeg" />
+            <param name="camera_frame_id" value="usb_cam" />
+            <param name="io_method" value="mmap"/>
+            <remap from="usb_cam/image_raw" to="camera/image_raw" />
+        </node>
+
+        <node pkg="assignment1" type="better_object_detection.py" name="ball_finder" output="screen" args="arm"/>
+    </group>
+
+    <node pkg="rqt_image_view" type="rqt_image_view" name="rqt_image_view" /> 
+    -->
+
+    <node pkg="assignment1" type="controller.py" name="controller" output="screen" />
+
+    <node pkg="assignment1" type="arm_controller.py" name="arm_controller" output="screen" />
+
+    <node pkg="assignment1" type="roomba_node.py" name="roomba_node" output="screen" />
+
+</launch>

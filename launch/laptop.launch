@@ -1,3 +1,0 @@
-<launch>
-    <node pkg="assignment1" name="directions_node" type="directions.py" output="screen" />
-</launch>

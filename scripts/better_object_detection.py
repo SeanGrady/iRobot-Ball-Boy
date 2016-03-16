@@ -62,8 +62,8 @@ class CamVision():
 
     def init_debug_consts(self):
         self.show_circles = False
-        self.show_avg_circles = True
-        self.show_bucket = False
+        self.show_avg_circles = False
+        self.show_bucket = True 
 
     def init_opencv_things(self):
         self.circle_struct = CirclesStruct(10)
@@ -131,6 +131,7 @@ class CamVision():
             )
             if self.camera_type == "front":
                 image = cv2.flip(image, 0)
+                image = cv2.flip(image, 1)
             #grey_image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
             #grey_ros_image = self.bridge.cv2_to_imgmsg(grey_image, "mono8")
             #self.grey_pub.publish(grey_ros_image)
