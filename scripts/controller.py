@@ -57,7 +57,8 @@ class RobotController():
         self.front_cam_on = Bool()
         self.arm_cam_on.data = False
         self.front_cam_on.data = False
-        self.seek_speed = 20
+        self.seek_speed = 25
+        self.collision_threshold = 15.
         #=================== Environment Variables ============================
         self.mapping_fix = False
         self.odom_estimate = roomba_odom()
@@ -71,16 +72,14 @@ class RobotController():
         self.arm_cam.ball_in_grabber = False
 
     def control_loop(self):
-        print "entering control loop"
         rospy.sleep(3)
-        self.camera_switch("arm", 0)
-        self.camera_switch("front", 1)
+        print "entering control loop"
+        self.switch_to_cam("front")
         print "Front cam on"
         print "beeping robot"
-        """
         self.beep_robot()
         print "driving to ball"
-        self.drive_until_ball()
+        self.navigate_randomly_avoid_collisions()
         print "Ball found, beeping robot"
         self.beep_robot()
         print "centering ball"
@@ -90,17 +89,9 @@ class RobotController():
         print "centering ball again"
         self.front_cam_center_ball()
         print "grabbing ball"
-        """
-        bool_msg = Bool()
-        bool_msg.data = True
-        self.arm_mode_pub.publish(bool_msg)
-        while not rospy.is_shutdown():
-            print self.ultrasound_data
-            rospy.sleep(3)
-        print "grabbing things"
         self.grab_close_ball()
         print "returning home"
-        #self.goto_waypoint((0,0))
+        self.goto_waypoint((0,0))
 
     def camera_switch(self, camera, value):
         b_value = bool(value)
@@ -140,6 +131,19 @@ class RobotController():
         self.odom_estimate = odom_message
 
     #======================= State Functions ==================================
+    def switch_to_cam(self, camera):
+        if camera == "front":
+            self.camera_switch("arm", 0)
+            self.camera_switch("front", 1)
+        if camera == "arm":
+            self.camera_switch("arm", 1)
+            self.camera_switch("front", 0)
+
+    def enable_collision(self):
+        bool_msg = Bool()
+        bool_msg.data = True
+        self.arm_mode_pub.publish(bool_msg)
+
     def grab_close_ball(self):
         self.camera_switch("arm",1)
         self.camera_switch("front", 0)
@@ -282,17 +286,15 @@ class RobotController():
     def moveAroundObjectDetected(self):
             # Object is detected turn left 90 degrees
             self.rotateLeft90Degress()
-
             # Now move robot till right ultrasound sensor does not
             # detect any object
-            while(self.readingRight < 20):
+            while self.ultrasound_data < (self.collision_threshold + 10):
                     # move the controller a little bit forward at
                     # say 1 second step
                     self.drive_robot(100,0)
                     rospy.sleep(1)
                     self.drive_robot(0,0)
                     # Update the right sensor reading
-                    self.getSensorReading(3)
 
             # So now the right sensor reading is clear, move a bit
             # more forward so that we account for robot`s body length
@@ -323,8 +325,7 @@ class RobotController():
                     current_angle = self.odom_estimate.angle
             self.drive_robot(0,0)
 
-    def rotateLeft90DegreesRandom(self, maxTime):
-            current_angle = self.odom_estimate.angle
+    def rotateLeftRandom(self, maxTime):
             self.drive_robot(0, 40)
             # Sleep for a random time between 0s to 4s
             rospy.sleep(random.random() * maxTime)
@@ -342,6 +343,16 @@ class RobotController():
                     # Sleep for a random time between 0s to 4s
                     self.drive_robotForwardRandom(5);
                     self.rotateLeft90DegreesRandom(2);
+
+    def navigate_randomly_avoid_collisions(self):
+        self.enable_collision()
+        self.drive_robot(50, 0)
+        while not self.front_cam.see_ball:
+            rospy.sleep(1)
+            if self.ultrasound_data.front_sensor > self.collision_threshold:
+                self.rotateLeft90Degrees()
+                self.rotateLeftRandom(4)
+                self.drive_robot(50, 0)
 
 if __name__ == "__main__":
     rc = RobotController()
