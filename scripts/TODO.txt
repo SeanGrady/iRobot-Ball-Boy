@@ -13,3 +13,7 @@ m4 (base): 0 = right, 1 = left
 ---
 sudo rmmod uvcvideo
 sudo modprobe uvcvideo quirks=640
+
+---
+192.168.1.20 - RPi
+192.168.1.30 - odroid

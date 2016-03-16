@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import os
 import rospy
 import random
 from robot_camera import RobotCamera
@@ -76,23 +77,30 @@ class RobotController():
         self.camera_switch("front", 1)
         print "Front cam on"
         print "beeping robot"
+        """
         self.beep_robot()
         print "driving to ball"
-        self.navigate_randomly()
+        self.drive_until_ball()
         print "Ball found, beeping robot"
         self.beep_robot()
         print "centering ball"
         self.front_cam_center_ball()
         print "approaching ball"
         self.approach_ball(100)
-        """
         print "centering ball again"
         self.front_cam_center_ball()
-        """
         print "grabbing ball"
+        """
+        bool_msg = Bool()
+        bool_msg.data = True
+        self.arm_mode_pub.publish(bool_msg)
+        while not rospy.is_shutdown():
+            print self.ultrasound_data
+            rospy.sleep(3)
+        print "grabbing things"
         self.grab_close_ball()
         print "returning home"
-        self.goto_waypoint((0,0))
+        #self.goto_waypoint((0,0))
 
     def camera_switch(self, camera, value):
         b_value = bool(value)
@@ -112,7 +120,7 @@ class RobotController():
 
     def handle_incoming_arm_cam_data(self, cam_data):
         self.arm_cam = cam_data
-        print "setting arm cam info: ", self.arm_cam.see_ball
+        #print "setting arm cam info: ", self.arm_cam.see_ball
         """
         self.arm_cam.see_ball = cam_data.see_ball
         self.arm_cam.ball_pos = cam_data.ball_pos
@@ -121,7 +129,7 @@ class RobotController():
 
     def handle_incoming_front_cam_data(self, cam_data):
         self.front_cam = cam_data
-        print "setting front cam info: ", self.front_cam.see_ball
+        #print "setting front cam info: ", self.front_cam.see_ball
         """
         self.front_cam.see_ball = cam_data.see_ball
         self.front_cam.ball_pos = cam_data.ball_pos
@@ -133,10 +141,12 @@ class RobotController():
 
     #======================= State Functions ==================================
     def grab_close_ball(self):
+        self.camera_switch("arm",1)
+        self.camera_switch("front", 0)
         mode = Bool()
         mode.data = True
         self.arm_mode_pub.publish(mode)
-        req = requestGrab()
+        req = False
         self.grab_request(req)
 
     def drive_until_ball(self):

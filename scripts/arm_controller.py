@@ -8,45 +8,8 @@ from std_msgs.msg import Bool
 from assignment1.srv import *
 from assignment1.msg import grabBall, ultrasoundData, camera_data
 
-class collisionDetection():
-	def __init__(self, connection):
-		# Initialize all sensor readings to 0
-		self.readingFront = 0
-		self.readingLeft = 0
-		self.readingRight = 0
-		self.connection = connection
-
-	# This function gets the sensor readings for all sensors
-	def getSensorReadings(self):
-		# connect to Arduino
-		self.connection.write('u1')
-		self.readingFront = int(connection.readline())
-
-		self.connection.write('u2')
-		self.readingLeft = int(connection.readline())
-
-		self.connection.write('u3')
-		self.readingRight = int(connection.readline())
-
-	# This returns sensor reading only for a given sensor
-	def getSensorReading(self, sensor):
-		if sensor == 1:
-			self.connection.write('u1')
-			self.readingFront = int(connection.readline())
-
-		elif sensor == 2:
-			self.connection.write('u2')
-			self.readingLeft = int(connection.readline())
-
-		elif sensor == 3:
-			self.connection.write('u3')
-			self.readingRight = int(connection.readline())
-		else:
-			print "ERROR : wrong sensor id passed"
-
 class ArmController():
     def __init__(self):
-        self.avoid_collisions = True
         self.arm_cam = camera_data()
         self.connection = None
         self.prev_grab = 0
@@ -102,19 +65,22 @@ class ArmController():
         }
         #self.update_joint_states()
         self.connect_robot()
-        self.collision_detector = collisionDetection(self.connection)
         rospy.spin()
     
     def handle_grab_toggle(self, bool_msg):
+        print "going to grab ball"
         self.locate_and_grab_ball()
         return []
 
     def handle_incoming_mode_switch(self, bool_msg):
+        print "arm node incoming mode switch"
+        print bool_msg
         if bool_msg.data:
-            self.avoid_collisions = False
-        else:
             self.avoid_collisions = True
+            print "beginning avoidance loop"
             self.collision_avoidance_loop()
+        else:
+            self.avoid_collisions = False
 
     def handle_incoming_arm_cam_data(self, cam_data):
         self.arm_cam = cam_data
@@ -123,64 +89,61 @@ class ArmController():
         while self.avoid_collisions:
             collision_data = self.update_collision_data()
             self.collision_data_pub.publish(collision_data)
-            rospy.sleep(.75)
+            rospy.sleep(2)
 
     def locate_and_grab_ball(self):
+        print "centering"
+        self.connection.write('c')
+        rospy.sleep(5)
+        print "going to top"
         self.arm_max('top')
+        rospy.sleep(8)
+        self.arm_max('drop')
+        rospy.sleep(5)
+        print "lowering until see ball"
         self.lower_until_ball()
         offset = self.get_ball_x_offset()
-        while offset > 30:
-            amt = 10
-            d = int(offset > 0)
-            command = 'm4'+str(d)+str(amt)
-            print "moving arm to ball with command ", command
+        print "offset is ", offset
+        while abs(offset) > 30:
+            amt = '003'
+            d = int(offset < 0)
+            command = 'm4'+str(d)+amt
+            print "sending command: ", command
             self.connection.write(command)
-            rospy.sleep(0.1)
+            rospy.sleep(1.0)
             offset = self.get_ball_x_offset()
+            print "offset is ", offset
         self.pickup_ball()
 
     def pickup_ball(self):
         self.arm_max('bot')
+        rospy.sleep(5)
         self.arm_max('grab')
+        rospy.sleep(4)
         self.arm_max('top')
+        rospy.sleep(8)
 
     def get_ball_x_offset(self):
         ball_x = self.arm_cam.ball_pos[0]
-        offset = ball_x - 320
+        offset = ball_x - (320 + 60)
         return offset
         
     def lower_until_ball(self):
-        self.arm_max('bot')
+        print "lowering arm"
+        self.connection.write('m10010')
         while not self.arm_cam.see_ball:
-            rospy.sleep(.1)
+            rospy.sleep(1.5)
+            self.connection.write('m10020')
+        self.connection.write('q')
+        print "seen ball"
 
     def update_collision_data(self):
-        self.collision_detector.get_sensor_readings()
+        left, right, front = self.get_sensor_readings()
         collision_data = ultrasoundData()
-        collision_data.sensor_front = self.collision_detector.readingFront
-        collision_data.sensor_left = self.collision_detector.readingLeft
-        collision_data.sensor_right = self.collision_detector.readingRight
+        collision_data.sensor_front = front
+        collision_data.sensor_left = left
+        collision_data.sensor_right = right
         return collision_data
-
-    def grab_or_drop(self):
-        if self.grab and not self.prev_grab:
-            print "grabbing"
-            self.arm_max('bot')
-            rospy.sleep(10)
-            self.arm_max('grab')
-            rospy.sleep(2)
-            angles = self.read_sensors()
-            print angles
-            self.arm_max('top')
-            rospy.sleep(10)
-            self.prev_grab = 1
-        elif self.prev_grab and not self.grab:
-            print "dropping"
-            self.arm_max('drop')
-            angles = self.read_sensors()
-            print angles
-            rospy.sleep(3)
-            self.prev_grab = 0
 
     def control_loop(self):
         while not rospy.is_shutdown():
@@ -200,18 +163,16 @@ class ArmController():
     def arm_max(self,command):
 	if(command == 'bot'):
 		#self.connection.write('m30100')
-		self.connection.write('m20100')
+		#self.connection.write('m20100')
 		self.connection.write('m10100')
 	elif(command == 'top'):
 		#self.connection.write('m31100')
-		self.connection.write('m21100')
+		#self.connection.write('m21100')
 		self.connection.write('m11100')
 	elif(command == 'drop'):
 		self.connection.write('m30300')
 	elif(command == 'grab'):
 		self.connection.write('m31300')
-			
-	self.connection.write(command)
 
     def assume_pose(self):
         """
@@ -272,6 +233,38 @@ class ArmController():
             rospy.sleep(2)
             #self.control_loop()
             #self.assume_pose()
+
+    # This function gets the sensor readings for all sensors
+    def get_sensor_readings(self):
+            # connect to Arduino
+            self.connection.write('u1')
+            front = int(self.connection.readline())
+            print " front: ", front
+
+            self.connection.write('u2')
+            left = int(self.connection.readline())
+
+            self.connection.write('u3')
+            right = int(self.connection.readline())
+            return left, right, front
+
+    # This returns sensor reading only for a given sensor
+    def getSensorReading(self, sensor):
+            if sensor == 1:
+                    self.connection.write('u1')
+                    reading = int(self.connection.readline())
+
+            elif sensor == 2:
+                    self.connection.write('u2')
+                    reading = int(self.connection.readline())
+
+            elif sensor == 3:
+                    self.connection.write('u3')
+                    reading = int(self.connection.readline())
+            else:
+                    print "ERROR : wrong sensor id passed"
+                    return None
+            return reading
 
 if __name__=="__main__":
     arm_controller = ArmController()

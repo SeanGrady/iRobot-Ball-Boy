@@ -16,8 +16,8 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.ball_hsv_lower = (38, 89, 29)
-        self.ball_hsv_upper = (87, 255, 255)
+        self.ball_hsv_lower = (40, 85, 55)
+        self.ball_hsv_upper = (63, 255, 255)
         self.bucket_hsv_lower = (77, 128, 66)
         self.bucket_hsv_upper = (99, 255, 255)
         self.blur_size = 9
@@ -25,8 +25,8 @@ class VisionConstants:
         self.hough_min_dist = 100
         self.hough_radius_min = 10
         self.hough_radius_max = 600
-        self.hough_param1 = 50
-        self.hough_param2 = 40
+        self.hough_param1 = 40
+        self.hough_param2 = 30
 
         openKernSize = 20
         closeKernSize = 5
@@ -61,8 +61,8 @@ class CamVision():
             sys.exit()
 
     def init_debug_consts(self):
-        self.show_circles = True
-        self.show_avg_circles = False
+        self.show_circles = False
+        self.show_avg_circles = True
         self.show_bucket = False
 
     def init_opencv_things(self):
@@ -117,7 +117,7 @@ class CamVision():
         )
 
     def handle_activation_message(self, message):
-        print "activation message ", self.camera_type, message
+        #print "activation message ", self.camera_type, message
         if message.data:
             self.constants.camera_active = True
         else:
@@ -136,7 +136,7 @@ class CamVision():
             #self.grey_pub.publish(grey_ros_image)
             cam_info, avg_circles, circles, bucket_blob = self.build_camera_info(image)
             self.camera_pub.publish(cam_info)
-            if self.show_circles == True and circles is not None:
+            if self.show_circles == True:
                 circled_image = self.draw_circles(image, circles)
                 self.publish_cv_image(circled_image, self.image_pub)
             if self.show_avg_circles == True:
@@ -176,7 +176,7 @@ class CamVision():
         return cam_info, avg_circles, circles, bucket_blob
 
     def get_ball_info(self):
-        if self.circle_struct.circles_list[0].bin_avg > 0.75:
+        if self.circle_struct.circles_list[0].bin_avg > 0.2:
             see_ball = True
             ball_xyr = self.circle_struct.circles_list[0].avg
             ball_pos = ball_xyr[0:2]
@@ -212,7 +212,7 @@ class CamVision():
     def color_circles(self, image):
         masked_image, mask = self.threshold_color(image, self.constants.ball_hsv_lower, self.constants.ball_hsv_upper)
         circles = self.hough_circles(masked_image, image)
-        #self.publish_cv_image(circled_image)
+        self.publish_cv_image(masked_image, self.mask_pub)
         return circles
 
     def detect_bucket(self, image):
@@ -312,8 +312,10 @@ class CamVision():
     def draw_circles(self, image, circles):
         #draw all the detected circles, and a box at their centers
         if circles is not None:
-            circles = np.round(circles[0, :]).astype("int")
-            #circles = np.round(circles).astype("int")
+            if self.show_circles:
+                circles = np.round(circles[0, :]).astype("int")
+            elif self.show_avg_circles:
+                circles = np.round(circles).astype("int")
             for x, y, r in circles:
                 cv2.circle(image, (x, y), r, (0, 0, 255), 4)
                 cv2.rectangle(
