@@ -123,13 +123,17 @@ class RobotController():
         if not self.front_cam.see_ball:
             print "orienting to home"
             self.orient_to_home()
+            print "exploring for ball"
+            self.find_a_ball()
+            """
             print "driving forward a bit"
             self.drive_forward_10_or_ball()
             print "navigating randomly"
             self.navigate_randomly()
             print "disabling collision"
             self.disable_collision()
-            print "centering ball"
+            """
+        print "centering ball"
         self.front_cam_center_ball()
         print "approaching ball"
         self.approach_ball(self.r_thresh)
@@ -144,6 +148,61 @@ class RobotController():
         self.approach_bucket()
         print "dropping ball in bucket"
         self.drop_ball_in_bucket()
+
+    def find_a_ball(self):
+        self.enable_collision()
+        rospy.sleep(1)
+        while not ropsy.is_shutdown() and not self.front_cam.see_ball:
+            direction = random.random() > 0.5
+            number = (random.random() * 10) + 5
+            print "turning dir, num: ", direction, number
+            ret = self.small_turns(direction, number)
+            if ret == "ball":
+                return "ball"
+            print "moving forwards 10 steps"
+            ret = self.small_forwards(10)
+            if ret == "ball":
+                return "ball"
+
+    def small_turns(direction, number):
+        if direction:
+            turn_rate = 40
+        else:
+            turn_rate = -40
+        i = 0
+        while not rospy.is_shutdown() and i < number:
+            if self.front_cam.see_ball:
+                return "ball"
+            start_time = rospy.get_time()
+            self.drive_robot(0, turn_rate)
+            while rospy.get_time() < (start_time + 2):
+                if self.front_cam.see_ball:
+                    return "ball"
+                rospy.sleep(0.03)
+            self.drive_robot(0, 0)
+            rospy.sleep(.75)
+            i += 1
+
+    def small_forwards(self, number):
+        i = 0
+        while not rospy.is_shutdown() and i < number:
+            if self.front_cam.see_ball:
+                return "ball"
+            start_time = rospy.get_time()
+            self.drive_robot(50, 0)
+            while rospy.get_time() < (start_time + 2):
+                if self.front_cam.see_ball:
+                    return "ball"
+                if self.ultrasound_data.sensor_front < 30:
+                    print "collision detected"
+                    self.rotateRight90Degrees()
+                    rospy.sleep(0.5)
+                    start_time = rospy.get_time()
+                rospy.sleep(0.03)
+            self.drive_robot(0, 0)
+            rospy.sleep(.75)
+            i += 1
+
 
     def orient_to_home(self):
         self.enable_collision()

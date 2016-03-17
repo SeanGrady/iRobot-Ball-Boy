@@ -251,9 +251,12 @@ class ArmController():
                 return 0, 0, 100
             # connect to Arduino
             self.connection.write('u1')
-            front_raw = self.connection.readline().strip()
+            front_raw = self.connection.readline().strip().split()[0]
             if front_raw:
-                front = int(front_raw)
+                try:
+                    front = int(front_raw)
+                except:
+                    front = 100
             else:
                 front = 100
 
