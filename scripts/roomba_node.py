@@ -76,7 +76,10 @@ class DriveNode():
         self.pose.pos_x += dx
         self.pose.pos_y += dy
         self.pose.angle_tot += da
-        self.pose.angle = np.sign(self.pose.angle_tot) * self.pose.angle % 360.
+        if self.pose.angle_tot < 0:
+            self.pose.angle = 360 - (self.pose.angle % 360)
+        else:
+            self.pose.angle = self.pose.angle % 360.
 
     def get_encoder_diffs(self):
         left_counts, right_counts = self.get_encoder_counts()
