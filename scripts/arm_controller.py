@@ -73,8 +73,7 @@ class ArmController():
         return []
 
     def handle_incoming_mode_switch(self, bool_msg):
-        print "arm node incoming mode switch"
-        print bool_msg
+        print "arm node incoming mode switch", bool_msg
         if bool_msg.data:
             self.avoid_collisions = True
             print "beginning avoidance loop"
@@ -86,10 +85,10 @@ class ArmController():
         self.arm_cam = cam_data
 
     def collision_avoidance_loop(self):
+        collision_data = self.update_collision_data()
         while self.avoid_collisions:
             collision_data = self.update_collision_data()
             self.collision_data_pub.publish(collision_data)
-            rospy.sleep(1)
 
     def locate_and_grab_ball(self):
         print "centering"
@@ -97,7 +96,7 @@ class ArmController():
         rospy.sleep(5)
         print "going to top"
         self.arm_max('top')
-        rospy.sleep(8)
+        rospy.sleep(15)
         self.arm_max('drop')
         rospy.sleep(5)
         print "lowering until see ball"
@@ -121,7 +120,7 @@ class ArmController():
         self.arm_max('grab')
         rospy.sleep(4)
         self.arm_max('top')
-        rospy.sleep(8)
+        rospy.sleep(15)
 
     def get_ball_x_offset(self):
         ball_x = self.arm_cam.ball_pos[0]
@@ -228,7 +227,7 @@ class ArmController():
             print "Connected to arm."
             rospy.sleep(2)
             self.arm_max('top')
-            rospy.sleep(10)
+            rospy.sleep(15)
             self.arm_max('drop')
             rospy.sleep(2)
             #self.control_loop()
@@ -238,22 +237,17 @@ class ArmController():
     def get_sensor_readings(self):
             # connect to Arduino
             self.connection.write('u1')
-            rospy.sleep(.7)
-            front = int(self.connection.readline())
-            print " front: ", front
-            self.connection.flush()
+            front = int(self.connection.readline().strip())
 
+            """
             self.connection.write('u2')
-            rospy.sleep(.7)
-            left = int(self.connection.readline())
-            print " left: ", left
-            self.connection.flush()
+            left = int(self.connection.readline().strip())
 
             self.connection.write('u3')
-            rospy.sleep(.7)
-            right_raw = self.connection.readline()
-            print right_raw
-            right = int(right_raw)
+            right = int(self.connection.readline().strip())
+            """
+            left = 0
+            right = 0
             return left, right, front
 
     # This returns sensor reading only for a given sensor

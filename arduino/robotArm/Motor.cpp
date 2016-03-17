@@ -27,7 +27,7 @@ void Motor::moveMotor1(int dir,int angle) {
 	else if(dir ==1)
 		myMotor1->run(FORWARD);
 
-	myMotor1->setSpeed(200);
+	myMotor1->setSpeed(150);
 	int currentSensorVal = sensor.getSensor1Value();
 	while(abs(currentSensorVal - initialSensorVal) < changeRequired) {
 

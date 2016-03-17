@@ -16,8 +16,8 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.ball_hsv_lower = (40, 85, 55)
-        self.ball_hsv_upper = (63, 255, 255)
+        self.ball_hsv_lower = (23, 60, 41)
+        self.ball_hsv_upper = (54, 255, 255)
         self.bucket_hsv_lower = (77, 128, 66)
         self.bucket_hsv_upper = (99, 255, 255)
         self.blur_size = 9

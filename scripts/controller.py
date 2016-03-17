@@ -60,7 +60,8 @@ class RobotController():
         self.front_cam_on.data = False
         self.seek_speed = 25
         self.collision_threshold = 15.
-        self.bucket_dist = 10
+        self.bucket_dist = 20
+        self.r_thresh = 70
 
         #=================== Environment Variables ============================
         self.mapping_fix = False
@@ -73,6 +74,11 @@ class RobotController():
         self.ultrasound_data = ultrasoundData()
         #this is bad, should use like inheritance or some nonsense
         self.arm_cam.ball_in_grabber = False
+        rospy.sleep(10)
+        self.beep_robot()
+        rospy.sleep(0.5)
+        self.beep_robot()
+        rospy.sleep(0.5)
 
     def control_loop(self):
         while not rospy.is_shutdown():
@@ -100,30 +106,54 @@ class RobotController():
         print "returning home"
         self.goto_waypoint((0,0))
         """
+    def ultrasound_test(self):
+        self.enable_collision()
+        while not rospy.is_shutdown():
+            print self.ultrasound_data, '\n'
+            rospy.sleep(1)
 
     def find_bucket_test(self):
-        rospy.sleep(10)
         self.beep_robot()
         self.orient_to_home()
-        print self.odom_home
+        print "self.odom_home: ", self.odom_home
         self.beep_robot()
 
     def competition(self):
+        print "orienting to home"
+        self.orient_to_home()
+        print "navigating randomly"
         self.navigate_randomly_avoid_collisions()
+        print "disabling collision"
+        self.disable_collision()
+        print "centering ball"
         self.front_cam_center_ball()
-        self.approach_ball()
+        print "approaching ball"
+        self.approach_ball(self.r_thresh)
+        print "grabbing ball"
         self.grab_close_ball()
+        print "going to bucket: ", bucket
         bucket = (self.odom_home.pos_x, self.odom_home.pos_y)
         self.goto_bucket_waypoint(bucket)
+        print "searching for bucket"
         self.search_bucket()
+        print "approaching bucket"
         self.approach_bucket()
+        print "dropping ball in bucket"
         self.drop_ball_in_bucket()
 
     def orient_to_home(self):
+        self.enable_collision()
+        print "looking for bucket"
         self.search_bucket()
+        print "centering bucket"
+        self.center_bucket()
+        print "approaching bucket"
         self.approach_bucket()
+        print "rotating"
         self.rotateRight90Degrees()
+        print "rotating more"
         self.rotateRight90Degrees()
+        print "setting home"
         self.set_home_here()
 
     def camera_switch(self, camera, value):
@@ -153,7 +183,7 @@ class RobotController():
 
     def handle_incoming_front_cam_data(self, cam_data):
         self.front_cam = cam_data
-        #print "setting front cam info: ", self.front_cam.see_ball
+        #print "setting front cam info: ", self.front_cam.see_bucket
         """
         self.front_cam.see_ball = cam_data.see_ball
         self.front_cam.ball_pos = cam_data.ball_pos
@@ -178,6 +208,11 @@ class RobotController():
     def enable_collision(self):
         bool_msg = Bool()
         bool_msg.data = True
+        self.arm_mode_pub.publish(bool_msg)
+
+    def disable_collision(self):
+        bool_msg = Bool()
+        bool_msg.data = False
         self.arm_mode_pub.publish(bool_msg)
 
     def grab_close_ball(self):
@@ -267,12 +302,14 @@ class RobotController():
 
     def search_bucket(self):
         self.switch_to_cam("front")
-        current_angle = self.odom_estimate.angle
+        current_angle = self.odom_estimate.angle_tot
         target_angle = current_angle + 360
-        self.drive_robot(0, 40)
+        self.drive_robot(0, -40)
+        print current_angle, target_angle
         while not self.front_cam.see_bucket and current_angle < target_angle:
             rospy.sleep(.5)
-            current_angle = self.odom_estimate.angle
+            current_angle = self.odom_estimate.angle_tot
+            print "see bucket: ", self.front_cam.see_bucket
         self.drive_robot(0,0)
         if self.front_cam.see_bucket:
             return True
@@ -281,26 +318,39 @@ class RobotController():
 
     def center_bucket(self):
         self.switch_to_cam("front")
-        offset = 320 - self.front_cam.bucket_pos[0]
-        while offset > 20:
+        offset = self.front_cam.bucket_pos[0] - 320
+        while abs(offset) > 10:
             print "offset", offset
             #turn_rate = max(min(offset, 50), 20)
-            turn_rate = self.seek_speed 
+            turn_rate = self.seek_speed * np.sign(offset)
             self.drive_robot(0, turn_rate)
-            rospy.sleep(0.3)
+            rospy.sleep(0.20)
             self.drive_robot(0, 0)
             rospy.sleep(1.)
-            offset = 320 - self.front_cam.bucket_pos[0]
+            offset = self.front_cam.bucket_pos[0] - 320
         print "centered bucket, sending stop command"
         self.drive_robot(0, 0)
 
     def approach_bucket(self):
+        print "in approach function"
         self.enable_collision()
         self.switch_to_cam("front")
-        self.drive_robot(50, 0)
-        while self.ultrasound_data.sensor_front > self.bucket_dist:
-            print self.ultrasound_data.sensor_front
+        self.drive_robot(40, 0)
+        if self.ultrasound_data.sensor_front > 200:
+            ultrasound_value = 200
+        elif self.ultrasound_data.sensor_front < 8:
+            ultrasound_value = 15
+        else:
+            ultrasound_value = self.ultrasound_data.sensor_front
+        while ultrasound_value > self.bucket_dist:
+            print "ultrasound_value: ", ultrasound_value
             rospy.sleep(0.2)
+            if self.ultrasound_data.sensor_front > 200:
+                ultrasound_value = 200
+            elif self.ultrasound_data.sensor_front < 8:
+                ultrasound_value = 15
+            else:
+                ultrasound_value = self.ultrasound_data.sensor_front
         self.drive_robot(0,0)
 
     def goto_waypoint(self, waypoint):
@@ -309,7 +359,7 @@ class RobotController():
         self.tolerance = 300.
         waypoint = np.array(waypoint)
         self.orient_toward_waypoint(waypoint)
-        print self.odom_estimate
+        print "self.odom_estimate: ", self.odom_estimate
         current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
         success = self.drive_to_wp_avoid_col(waypoint, current_pos, False)
         while not success:
@@ -324,7 +374,7 @@ class RobotController():
         self.tolerance = 300.
         waypoint = np.array(waypoint)
         self.orient_toward_waypoint(waypoint)
-        print self.odom_estimate
+        print "self.odom_estimate: ", self.odom_estimate
         current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
         success = self.drive_to_wp_avoid_col(waypoint, current_pos, True)
         while not success:
@@ -397,21 +447,23 @@ class RobotController():
             self.rotateRight90Degrees()
 
     def rotateLeft90Degress(self):
-            current_angle = self.odom_estimate.angle
+            current_angle = self.odom_estimate.angle_tot
             target_angle = current_angle + 90
-            self.drive_robot(0, 40)
+            self.drive_robot(0, -40)
             while(current_angle < target_angle):
                     rospy.sleep(0.25)
-                    current_angle = self.odom_estimate.angle
+                    current_angle = self.odom_estimate.angle_tot
             self.drive_robot(0,0)
 
     def rotateRight90Degrees(self):
-            current_angle = self.odom_estimate.angle
+            current_angle = self.odom_estimate.angle_tot
             target_angle = current_angle - 90
-            self.drive_robot(0, 40)
+            self.drive_robot(0, -40)
             while(current_angle > target_angle):
                     rospy.sleep(0.25)
-                    current_angle = self.odom_estimate.angle
+                    current_angle = self.odom_estimate.angle_tot
+                    print "current_angle: ", current_angle
+                    print "target_angle: ", target_angle
             self.drive_robot(0,0)
 
     def rotateLeftRandom(self, maxTime):
@@ -427,10 +479,16 @@ class RobotController():
 
     def turn_to_angle(self, angle):
         current_angle = self.odom_estimate.angle
-        self.drive_robot(0, 40)
-        while(current_angle > angle):
-            rospy.sleep(0.25)
-            current_angle = self.odom_estimate.angle
+        if current_angle < angle:
+            self.drive_robot(0, 40)
+            while(current_angle < angle):
+                rospy.sleep(0.25)
+                current_angle = self.odom_estimate.angle
+        if current_angle > angle:
+            self.drive_robot(0, -40)
+            while(current_angle > angle):
+                rospy.sleep(0.25)
+                current_angle = self.odom_estimate.angle
         self.drive_robot(0,0)
 
 
@@ -447,11 +505,12 @@ class RobotController():
         self.drive_robot(50, 0)
         while not self.front_cam.see_ball:
             rospy.sleep(1)
-            if self.ultrasound_data.front_sensor > self.collision_threshold:
+            if self.ultrasound_data.sensor_front > self.collision_threshold:
                 self.rotateLeft90Degrees()
                 self.rotateLeftRandom(4)
                 self.drive_robot(50, 0)
+        self.drive_robot(0,0)
 
 if __name__ == "__main__":
     rc = RobotController()
-    rc.find_bucket_test()
+    rc.competition()
