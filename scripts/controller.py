@@ -51,6 +51,7 @@ class RobotController():
                 queue_size = 10
         )
 
+        self.arm_comm_req = rospy.ServiceProxy('requestArmComm', requestArmComm)
         self.turn_req = rospy.ServiceProxy('turnAngle', turnAngle)
         self.command_req = rospy.ServiceProxy('requestCommand', requestCommand)
         self.drive_request = rospy.ServiceProxy('requestDrive', requestDrive)
@@ -61,7 +62,7 @@ class RobotController():
         self.seek_speed = 25
         self.collision_threshold = 15.
         self.bucket_dist = 20
-        self.r_thresh = 70
+        self.r_thresh = 40
 
         #=================== Environment Variables ============================
         self.mapping_fix = False
@@ -119,20 +120,23 @@ class RobotController():
         self.beep_robot()
 
     def competition(self):
-        print "orienting to home"
-        self.orient_to_home()
-        print "navigating randomly"
-        self.navigate_randomly_avoid_collisions()
-        print "disabling collision"
-        self.disable_collision()
-        print "centering ball"
+        if not self.front_cam.see_ball:
+            print "orienting to home"
+            self.orient_to_home()
+            print "driving forward a bit"
+            self.drive_forward_10_or_ball()
+            print "navigating randomly"
+            self.navigate_randomly()
+            print "disabling collision"
+            self.disable_collision()
+            print "centering ball"
         self.front_cam_center_ball()
         print "approaching ball"
         self.approach_ball(self.r_thresh)
         print "grabbing ball"
         self.grab_close_ball()
+        bucket = [self.odom_home.pos_x, self.odom_home.pos_y]
         print "going to bucket: ", bucket
-        bucket = (self.odom_home.pos_x, self.odom_home.pos_y)
         self.goto_bucket_waypoint(bucket)
         print "searching for bucket"
         self.search_bucket()
@@ -195,7 +199,7 @@ class RobotController():
 
     #======================= State Functions ==================================
     def drop_ball_in_bucket(self):
-        pass
+        self.arm_comm_req("drop")
 
     def switch_to_cam(self, camera):
         if camera == "front":
@@ -259,18 +263,28 @@ class RobotController():
             print e
 
     def front_cam_center_ball(self):
-        self.camera_switch("arm", 0)
-        self.camera_switch("front", 1)
-        offset = 320 - self.front_cam.ball_pos[0]
-        while offset > 20:
+        start_time = rospy.get_time()
+        self.switch_to_cam("front")
+        offset = self.front_cam.ball_pos[0] - 320
+        self.drive_robot(0,0)
+        while abs(offset) > 20:
+            if rospy.get_time() - start_time > 10:
+                print "centering timeout"
+                self.drive_robot(40,0)
+                rospy.sleep(0.15)
+                self.drive_robot(0,0)
+            if offset == -320:
+                print "offset", offset
+                rospy.sleep(.1)
+                continue
             print "offset", offset
             #turn_rate = max(min(offset, 50), 20)
-            turn_rate = self.seek_speed 
+            turn_rate = self.seek_speed * np.sign(offset)
             self.drive_robot(0, turn_rate)
-            rospy.sleep(0.10)
+            rospy.sleep(0.15)
             self.drive_robot(0, 0)
             rospy.sleep(1.)
-            offset = 320 - self.front_cam.ball_pos[0]
+            offset = self.front_cam.ball_pos[0] - 320
         print "centered ball, sending stop command"
         self.drive_robot(0, 0)
 
@@ -306,7 +320,7 @@ class RobotController():
         target_angle = current_angle + 360
         self.drive_robot(0, -40)
         print current_angle, target_angle
-        while not self.front_cam.see_bucket and current_angle < target_angle:
+        while (not self.front_cam.see_bucket and current_angle < target_angle) and not rospy.is_shutdown():
             rospy.sleep(.5)
             current_angle = self.odom_estimate.angle_tot
             print "see bucket: ", self.front_cam.see_bucket
@@ -323,6 +337,7 @@ class RobotController():
             print "offset", offset
             #turn_rate = max(min(offset, 50), 20)
             turn_rate = self.seek_speed * np.sign(offset)
+            print "turn_rate: ", turn_rate
             self.drive_robot(0, turn_rate)
             rospy.sleep(0.20)
             self.drive_robot(0, 0)
@@ -351,6 +366,9 @@ class RobotController():
                 ultrasound_value = 15
             else:
                 ultrasound_value = self.ultrasound_data.sensor_front
+                offset = self.front_cam.bucket_pos[0] - 320
+                turn_rate = np.sign(offset) * 10
+                self.drive_robot(40, turn_rate)
         self.drive_robot(0,0)
 
     def goto_waypoint(self, waypoint):
@@ -375,7 +393,7 @@ class RobotController():
         waypoint = np.array(waypoint)
         self.orient_toward_waypoint(waypoint)
         print "self.odom_estimate: ", self.odom_estimate
-        current_pos = np.array(self.odom_estimate.pos_x, self.odom_estimate.pos_y)
+        current_pos = np.array([self.odom_estimate.pos_x, self.odom_estimate.pos_y])
         success = self.drive_to_wp_avoid_col(waypoint, current_pos, True)
         while not success:
             self.moveAroundObjectDetected()
@@ -397,13 +415,25 @@ class RobotController():
     def approach_ball(self, r_thresh):
         self.camera_switch('front', True)
         self.camera_switch('arm', False)
+        offset = 340 - self.front_cam.ball_pos[0]
         while self.front_cam.see_ball:
+            if self.front_cam.ball_pos[0] == 0 and self.front_cam.ball_pos[1] == 0:
+                rospy.sleep(.1)
+                continue
             if self.front_cam.ball_size < r_thresh:
-                self.drive_robot(50, 0)
-                rospy.sleep(0.1)
+                offset = 340 - self.front_cam.ball_pos[0]
+                print "approach offset: ", offset
+                turn_rate = - np.sign(offset) * 15
+                print "approach turn_rate: ", turn_rate
+                self.drive_robot(50, turn_rate)
+                rospy.sleep(0.15)
+                self.drive_robot(0,0)
+                rospy.sleep(1)
             else:
                 self.drive_robot(0,0)
                 break
+        self.drive_robot(0,0)
+        
 
     def pickup_ball(self):
         #this is going to be a hard one...
@@ -426,7 +456,7 @@ class RobotController():
     #=========================== Navigation ===================================
     def moveAroundObjectDetected(self):
             # Object is detected turn left 90 degrees
-            self.rotateLeft90Degress()
+            self.rotateLeft90Degrees()
             # Now move robot till right ultrasound sensor does not
             # detect any object
             while self.ultrasound_data.sensor_right < (self.collision_threshold + 10):
@@ -446,7 +476,7 @@ class RobotController():
             # degress so that we are in the same direction
             self.rotateRight90Degrees()
 
-    def rotateLeft90Degress(self):
+    def rotateLeft90Degrees(self):
             current_angle = self.odom_estimate.angle_tot
             target_angle = current_angle + 90
             self.drive_robot(0, -40)
@@ -460,7 +490,30 @@ class RobotController():
             target_angle = current_angle - 90
             self.drive_robot(0, -40)
             while(current_angle > target_angle):
-                    rospy.sleep(0.25)
+                    rospy.sleep(0.2)
+                    current_angle = self.odom_estimate.angle_tot
+                    print "current_angle: ", current_angle
+                    print "target_angle: ", target_angle
+            self.drive_robot(0,0)
+
+    def rotateRight90Degrees_until_ball(self):
+            current_angle = self.odom_estimate.angle_tot
+            target_angle = current_angle - 90
+            self.drive_robot(0, -40)
+            while (current_angle > target_angle) and not self.front_cam.see_ball:
+                    rospy.sleep(0.2)
+                    current_angle = self.odom_estimate.angle_tot
+                    print "current_angle: ", current_angle
+                    print "target_angle: ", target_angle
+            self.drive_robot(0,0)
+
+    def rotateLeft90Degrees_until_ball(self):
+            current_angle = self.odom_estimate.angle_tot
+            target_angle = current_angle + 90
+            self.drive_robot(0, 40)
+            print current_angle, target_angle
+            while(current_angle < target_angle) and not self.front_cam.see_ball:
+                    rospy.sleep(0.2)
                     current_angle = self.odom_estimate.angle_tot
                     print "current_angle: ", current_angle
                     print "target_angle: ", target_angle
@@ -469,7 +522,8 @@ class RobotController():
     def rotateLeftRandom(self, maxTime):
             self.drive_robot(0, 40)
             # Sleep for a random time between 0s to 4s
-            rospy.sleep(random.random() * maxTime)
+            while i < maxTime:
+                rospy.sleep(.1)
             self.drive_robot(0,0)
 
     def drive_robotForwardRandom(self, maxTime):
@@ -493,23 +547,53 @@ class RobotController():
 
 
     def navigate_randomly(self):
-            # Initial state , move forward for a random time first
-            # Move randomly till the camera detects a ball
-            while not self.front_cam.see_ball:
-                    # Sleep for a random time between 0s to 4s
-                    self.drive_robotForwardRandom(5);
-                    self.rotateLeft90DegreesRandom(2);
+        self.enable_collision()
+        flip = random.random()
+        while not rospy.is_shutdown():
+            if self.front_cam.see_ball:
+                return
+            if flip > .5:
+                print "rotating right"
+                self.rotateRight90Degrees_until_ball()
+                print "done rotating right"
+            else:
+                print "rotating left"
+                self.rotateLeft90Degrees_until_ball()
+                print "done rotating left"
+            if self.front_cam.see_ball:
+                self.drive_robot(0,0)
+                return
+            self.drive_forward_10_or_ball()
+
+    def drive_forward_10_or_ball(self):
+        target = rospy.get_time() + 4
+        self.drive_robot(40, 0)
+        while not self.front_cam.see_ball and rospy.get_time() < target:
+            rospy.sleep(0.1)
+            '''
+            if self.ultrasound_data.sensor_front > self.collision_threshold:
+                print "detected collision"
+                self.rotateRight90Degrees()
+            '''
+        print "done driving forward"
+        self.drive_robot(0,0)
+
+    def turn_until_ball(self, angle):
+        pass
 
     def navigate_randomly_avoid_collisions(self):
+        """
         self.enable_collision()
         self.drive_robot(50, 0)
-        while not self.front_cam.see_ball:
-            rospy.sleep(1)
+        while not self.front_cam.see_ball and not rospy.is_shutdown():
+            print "can see ball?", self.front_cam.see_ball
             if self.ultrasound_data.sensor_front > self.collision_threshold:
-                self.rotateLeft90Degrees()
-                self.rotateLeftRandom(4)
+                self.rotateLeftRandom(1.5)
                 self.drive_robot(50, 0)
+                
         self.drive_robot(0,0)
+        """
+        pass
 
 if __name__ == "__main__":
     rc = RobotController()

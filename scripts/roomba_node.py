@@ -61,7 +61,6 @@ class DriveNode():
             self.encoder_count_reset()
             dx, dy, da = self.calc_pose_deltas(left_dist, right_dist)
             self.update_pose(dx, dy, da)
-            #pprint(self.pose)
             self.odom_pub.publish(self.pose)
             self.odom_rate.sleep()
 

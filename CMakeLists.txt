@@ -65,6 +65,7 @@ find_package(catkin REQUIRED COMPONENTS
    turnAngle.srv
    requestCommand.srv
    requestGrab.srv
+   requestArmComm.srv
  )
 
 ## Generate actions in the 'action' folder

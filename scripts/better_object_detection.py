@@ -16,17 +16,17 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.ball_hsv_lower = (23, 60, 41)
-        self.ball_hsv_upper = (54, 255, 255)
-        self.bucket_hsv_lower = (77, 128, 66)
-        self.bucket_hsv_upper = (99, 255, 255)
+        self.ball_hsv_lower = (3, 137, 133)
+        self.ball_hsv_upper = (11, 255, 255)
+        self.bucket_hsv_lower = (69, 102, 64)
+        self.bucket_hsv_upper = (98, 255, 255)
         self.blur_size = 9
         self.hough_accumulator = 1
         self.hough_min_dist = 100
         self.hough_radius_min = 10
-        self.hough_radius_max = 600
-        self.hough_param1 = 40
-        self.hough_param2 = 30
+        self.hough_radius_max = 100
+        self.hough_param1 = 25
+        self.hough_param2 = 20
 
         openKernSize = 20
         closeKernSize = 5
@@ -62,8 +62,8 @@ class CamVision():
 
     def init_debug_consts(self):
         self.show_circles = False
-        self.show_avg_circles = False
-        self.show_bucket = True 
+        self.show_avg_circles = True
+        self.show_bucket = False
 
     def init_opencv_things(self):
         self.circle_struct = CirclesStruct(10)
@@ -159,6 +159,8 @@ class CamVision():
         cam_info = camera_data()
         self.circle_struct.add_frame_circles(circles)
         avg_circles = self.circle_struct.circles_list[0].avg
+        #print "avg_circles are: ", avg_circles
+        #print "circle_struct is: ", self.circle_struct.circles_list[0].buff
         #self.update_circle_averages(circles)
         if self.camera_type == "arm":
             see_ball, ball_pos, ball_size = self.get_ball_info()
@@ -208,6 +210,7 @@ class CamVision():
         if circles is not None:
             circles = np.round(circles[0, :]).astype("int")
             for i, circle in enumerate(circles):
+                print "going to add circle: ", circle
                 self.circle_struct[i].add_circle(circle)
 
     def color_circles(self, image):

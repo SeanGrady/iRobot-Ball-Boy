@@ -4,7 +4,7 @@ import serial
 import math
 import rospy
 import struct
-from std_msgs.msg import Bool
+from std_msgs.msg import Bool, String
 from assignment1.srv import *
 from assignment1.msg import grabBall, ultrasoundData, camera_data
 
@@ -29,6 +29,11 @@ class ArmController():
                 "requestGrab",
                 requestGrab,
                 self.handle_grab_toggle
+        )
+        self.arm_comm_service = rospy.Service(
+                "requestArmComm",
+                requestArmComm,
+                self.handle_arm_comm_req
         )
         self.arm_mode_sub = rospy.Subscriber(
                 "/arm_node/mode",
@@ -96,7 +101,7 @@ class ArmController():
         rospy.sleep(5)
         print "going to top"
         self.arm_max('top')
-        rospy.sleep(15)
+        rospy.sleep(4)
         self.arm_max('drop')
         rospy.sleep(5)
         print "lowering until see ball"
@@ -104,6 +109,8 @@ class ArmController():
         offset = self.get_ball_x_offset()
         print "offset is ", offset
         while abs(offset) > 30:
+            if offset == -380:
+                rospy.sleep(.1)
             amt = '003'
             d = int(offset < 0)
             command = 'm4'+str(d)+amt
@@ -116,7 +123,9 @@ class ArmController():
 
     def pickup_ball(self):
         self.arm_max('bot')
-        rospy.sleep(5)
+        rospy.sleep(4)
+        self.arm_max('bot')
+        rospy.sleep(4)
         self.arm_max('grab')
         rospy.sleep(4)
         self.arm_max('top')
@@ -132,13 +141,16 @@ class ArmController():
         self.connection.write('m10010')
         while not self.arm_cam.see_ball:
             rospy.sleep(1.5)
-            self.connection.write('m10020')
+            self.connection.write('m10010')
         self.connection.write('q')
+        self.connection.write('m10003')
         print "seen ball"
 
     def update_collision_data(self):
-        left, right, front = self.get_sensor_readings()
         collision_data = ultrasoundData()
+        if not self.avoid_collisions:
+            return collision_data
+        left, right, front = self.get_sensor_readings()
         collision_data.sensor_front = front
         collision_data.sensor_left = left
         collision_data.sensor_right = right
@@ -235,9 +247,15 @@ class ArmController():
 
     # This function gets the sensor readings for all sensors
     def get_sensor_readings(self):
+            if not self.avoid_collisions:
+                return 0, 0, 100
             # connect to Arduino
             self.connection.write('u1')
-            front = int(self.connection.readline().strip())
+            front_raw = self.connection.readline().strip()
+            if front_raw:
+                front = int(front_raw)
+            else:
+                front = 100
 
             """
             self.connection.write('u2')
@@ -267,6 +285,9 @@ class ArmController():
                     print "ERROR : wrong sensor id passed"
                     return None
             return reading
+
+    def handle_arm_comm_req(self, req):
+        self.arm_max(req.command)
 
 if __name__=="__main__":
     arm_controller = ArmController()

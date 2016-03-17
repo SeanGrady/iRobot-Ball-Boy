@@ -31,7 +31,7 @@ class CirclesStruct():
 
     def add_frame_circles(self, circles):
         if circles is not None:
-            self.circles_list[0].add_circle(circles[0])
+            self.circles_list[0].add_circle(circles[0][0])
         else:
             self.circles_list[0].add_empty()
 
