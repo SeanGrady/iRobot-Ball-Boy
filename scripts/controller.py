@@ -279,8 +279,7 @@ class RobotController():
         self.arm_mode_pub.publish(bool_msg)
 
     def grab_close_ball(self):
-        self.camera_switch("arm",1)
-        self.camera_switch("front", 0)
+        self.switch_to_cam("arm")
         mode = Bool()
         mode.data = True
         self.arm_mode_pub.publish(mode)
@@ -472,8 +471,7 @@ class RobotController():
         return True
 
     def approach_ball(self, r_thresh):
-        self.camera_switch('front', True)
-        self.camera_switch('arm', False)
+        self.switch_to_cam("front")
         offset = 340 - self.front_cam.ball_pos[0]
         while self.front_cam.see_ball:
             if self.front_cam.ball_pos[0] == 0 and self.front_cam.ball_pos[1] == 0:
