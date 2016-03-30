@@ -16,17 +16,17 @@ from circles_buffer import CirclesBuffer, CirclesStruct
 class VisionConstants:
     def __init__(self):
         self.camera_active = True
-        self.ball_hsv_lower = (3, 137, 133)
-        self.ball_hsv_upper = (11, 255, 255)
-        self.bucket_hsv_lower = (69, 102, 64)
-        self.bucket_hsv_upper = (98, 255, 255)
+        self.ball_hsv_lower = (0, 134, 26)
+        self.ball_hsv_upper = (20, 255, 255)
+        self.bucket_hsv_lower = (65, 87, 27)
+        self.bucket_hsv_upper = (101, 255, 255)
         self.blur_size = 9
         self.hough_accumulator = 1
         self.hough_min_dist = 100
         self.hough_radius_min = 10
         self.hough_radius_max = 100
-        self.hough_param1 = 25
-        self.hough_param2 = 20
+        self.hough_param1 = 50
+        self.hough_param2 = 35
 
         openKernSize = 20
         closeKernSize = 5

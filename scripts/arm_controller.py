@@ -98,12 +98,12 @@ class ArmController():
     def locate_and_grab_ball(self):
         print "centering"
         self.connection.write('c')
-        rospy.sleep(5)
+        rospy.sleep(2)
         print "going to top"
         self.arm_max('top')
-        rospy.sleep(4)
+        rospy.sleep(2)
         self.arm_max('drop')
-        rospy.sleep(5)
+        rospy.sleep(2)
         print "lowering until see ball"
         self.lower_until_ball()
         offset = self.get_ball_x_offset()
@@ -123,13 +123,13 @@ class ArmController():
 
     def pickup_ball(self):
         self.arm_max('bot')
-        rospy.sleep(4)
+        rospy.sleep(3)
         self.arm_max('bot')
-        rospy.sleep(4)
+        rospy.sleep(3)
         self.arm_max('grab')
         rospy.sleep(4)
         self.arm_max('top')
-        rospy.sleep(15)
+        rospy.sleep(8)
 
     def get_ball_x_offset(self):
         ball_x = self.arm_cam.ball_pos[0]
@@ -288,6 +288,7 @@ class ArmController():
 
     def handle_arm_comm_req(self, req):
         self.arm_max(req.command)
+        return []
 
 if __name__=="__main__":
     arm_controller = ArmController()
