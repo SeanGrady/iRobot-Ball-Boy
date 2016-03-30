@@ -121,33 +121,32 @@ class RobotController():
 
     def competition(self):
         if not self.front_cam.see_ball:
-            print "orienting to home"
             self.orient_to_home()
-            print "exploring for ball"
-            self.find_a_ball()
-            """
-            print "driving forward a bit"
-            self.drive_forward_10_or_ball()
-            print "navigating randomly"
-            self.navigate_randomly()
-            print "disabling collision"
-            self.disable_collision()
-            """
-        print "centering ball"
-        self.front_cam_center_ball()
-        print "approaching ball"
-        self.approach_ball(self.r_thresh)
-        print "grabbing ball"
-        self.grab_close_ball()
-        bucket = [self.odom_home.pos_x, self.odom_home.pos_y]
-        print "going to bucket: ", bucket
-        self.goto_bucket_waypoint(bucket)
-        print "searching for bucket"
-        self.search_bucket()
-        print "approaching bucket"
-        self.approach_bucket()
-        print "dropping ball in bucket"
-        self.drop_ball_in_bucket()
+        while not rospy.is_shutdown():
+            if not self.front_cam.see_ball:
+                print "orienting to home"
+                print "driving forward a bit"
+                self.drive_forward_10_or_ball()
+                print "navigating randomly"
+                self.navigate_randomly()
+                print "disabling collision"
+                self.disable_collision()
+                print "centering ball"
+            self.front_cam_center_ball()
+            print "approaching ball"
+            self.approach_ball(self.r_thresh)
+            print "grabbing ball"
+            self.grab_close_ball()
+            bucket = [self.odom_home.pos_x, self.odom_home.pos_y]
+            print "going to bucket: ", bucket
+            self.goto_bucket_waypoint(bucket)
+            print "searching for bucket"
+            self.search_bucket()
+            print "approaching bucket"
+            self.approach_bucket()
+            print "dropping ball in bucket"
+            self.drop_ball_in_bucket()
+            rospy.sleep(5)
 
     def find_a_ball(self):
         self.enable_collision()
